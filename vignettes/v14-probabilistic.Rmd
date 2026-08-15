@@ -1,0 +1,35 @@
+---
+title: "Probabilistic and Bayesian PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Probabilistic and Bayesian PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Probabilistic PCA
+
+PPCA models
+
+$$x=Wz+\mu+\epsilon,$$
+
+with $z\sim N(0,I)$ and isotropic $\epsilon\sim N(0,\sigma^2I)$. The marginal covariance is
+
+$$C=WW^T+\sigma^2I.$$
+
+```{r}
+f <- pca_fit(iris[,1:4],method="ppca",scale=TRUE,ncomp=2)
+f$extra$sigma2
+f$extra$loglik
+```
+
+The maximum-likelihood loading subspace coincides with the leading classical PCA subspace under the PPCA model, while the probabilistic formulation adds a noise model and latent posterior coordinates.
+
+## Bayesian PCA
+
+`method="bayesian"` uses the optional `pcaMethods` BPCA backend. Bayesian credible statements depend on that model and its priors; they should not be confused with nonparametric bootstrap intervals.

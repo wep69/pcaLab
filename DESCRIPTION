@@ -1,0 +1,57 @@
+Package: pcaLab
+Type: Package
+Title: Teaching, Inference, Robustness, and Advanced Principal Component Analysis
+Version: 0.1.0
+Date: 2026-08-14
+Authors@R: c(
+    person(given = c("Walter", "Esfrain"), family = "Pereira",
+           email = "walterufpb@yahoo.com.br", role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0003-1085-0191"))
+    )
+Description: A unified framework for teaching, fitting, validating, interpreting,
+    comparing, and reporting principal component analysis (PCA). The package
+    provides classical, weighted, NIPALS, EM, probabilistic, Bayesian, robust,
+    cellwise-robust, sparse, robust-sparse, low-rank plus sparse, kernel,
+    generalized, compositional, functional, dynamic, multilevel, multiblock,
+    randomized, and incremental PCA workflows. It adds permutation inference,
+    bootstrap uncertainty, stability diagnostics, multiple approaches for
+    selecting dimensionality, variable-component association, publication-ready
+    graphics and tables, projection tours, educational demonstrations, and
+    reproducible reporting. Advanced engines are connected through optional
+    packages and are accessed through a common 'pca_fit' object.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends: R (>= 4.2.0)
+Imports:
+    grDevices,
+    grid,
+    stats,
+    tools,
+    utils
+Suggests:
+    cellWise,
+    corpcor,
+    elasticnet,
+    glmpca,
+    ggplot2,
+    gt,
+    gifski,
+    irlba,
+    flextable,
+    knitr,
+    logisticPCA,
+    MFPCA,
+    officer,
+    openxlsx,
+    pcaMethods,
+    plotly,
+    rmarkdown,
+    shiny,
+    rospca,
+    sparsepca,
+    testthat (>= 3.0.0),
+    tourr
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

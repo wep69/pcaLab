@@ -1,0 +1,41 @@
+---
+title: "PCA with Missing Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{PCA with Missing Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Missing values change the computational problem
+
+Complete-case deletion can change the target population and waste multivariate information. pcaLab therefore exposes methods that can estimate low-dimensional structure with missing entries.
+
+```{r}
+X <- as.matrix(iris[,1:4])
+X[sample(length(X),25)] <- NA
+n <- pca_fit(X,method="nipals",scale=TRUE,ncomp=2)
+e <- pca_fit(X,method="em",scale=TRUE,ncomp=2)
+```
+
+## NIPALS
+
+NIPALS alternates score/loading estimates using available entries and deflates the residual matrix. It is useful for moderate missingness but should be checked for convergence and sensitivity.
+
+## EM-style low-rank completion
+
+The internal EM engine initializes missing cells from column means, alternates truncated SVD reconstruction and missing-cell updates, and returns the completed processed matrix together with convergence information.
+
+```{r}
+e$extra$converged
+e$extra$iterations
+```
+
+## Bayesian PCA
+
+If `pcaMethods` is installed, `method="bayesian"` delegates to BPCA. Missing-data uncertainty is model-dependent; imputed values should not be treated as observed measurements.

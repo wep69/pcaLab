@@ -1,0 +1,36 @@
+---
+title: "Dynamic PCA for Multivariate Time Series"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Dynamic PCA for Multivariate Time Series}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Lag embedding
+
+Dynamic PCA augments the current multivariate vector with lagged vectors before fitting PCA. This allows components to represent contemporaneous and lagged covariance structure.
+
+```{r}
+set.seed(1)
+X <- matrix(arima.sim(list(ar=.7),n=400),100,4)
+f <- pca_fit(X,method="dynamic",lags=c(1,2),scale=TRUE,ncomp=3)
+colnames(f$processed_data)[1:8]
+```
+
+## Time ordering matters
+
+Ordinary observation bootstrap is generally not appropriate when serial dependence is inferentially relevant. Use time-series-aware resampling outside the generic `pca_boot()` workflow or predefine independent experimental units.
+
+## Robust dynamic PCA
+
+If `rospca` is available, `robust=TRUE` fits ROBPCA to the lag-embedded matrix.
+
+```{r eval=FALSE}
+r <- pca_fit(X,method="dynamic",lags=1:2,robust=TRUE,scale=TRUE,ncomp=3)
+```

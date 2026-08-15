@@ -1,0 +1,36 @@
+---
+title: "Compositional PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Compositional PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Compositional geometry
+
+A composition contains relative information. Applying ordinary PCA directly to closed proportions can generate artifacts because the parts are constrained by a constant sum.
+
+For positive compositions, the centered log-ratio transform is
+
+$$\operatorname{clr}(x)_j=\log x_j-\frac1p\sum_{h=1}^p\log x_h.$$
+
+```{r}
+X <- matrix(c(.2,.3,.5,.1,.4,.5,.25,.25,.5,.3,.2,.5),ncol=3,byrow=TRUE)
+colnames(X) <- c("N","P","K")
+f <- pca_fit(X,method="compositional",coordinate="clr",ncomp=2)
+f$extra$coordinate
+```
+
+## ilr coordinates
+
+`coordinate="ilr"` uses an internal orthonormal Helmert basis and performs PCA in $(p-1)$ Euclidean log-ratio coordinates.
+
+## Zeros
+
+Zeros are not silently replaced. A positive `pseudocount` must be supplied explicitly if that approximation is scientifically defensible. Structural zeros and rounded zeros may require different methods outside the scope of a generic pseudocount.

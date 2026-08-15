@@ -1,0 +1,37 @@
+---
+title: "Kernel and Nonlinear PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Kernel and Nonlinear PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why linear PCA can miss curved structure
+
+Zero or weak Pearson correlation does not imply absence of dependence. Curved manifolds can have important structure that no single linear projection summarizes well.
+
+```{r}
+s <- pca_simulate(n=150,p=5,rank=2,nonlinear=TRUE,noise=.15,seed=8)
+lin <- pca_fit(s$data,scale=TRUE,ncomp=2)
+k <- pca_fit(s$data,method="kernel",scale=TRUE,ncomp=2,kernel="rbf")
+```
+
+## Kernel PCA
+
+Kernel PCA centers a Gram matrix in feature space and solves an eigenvalue problem there. `pcaLab` supports linear, polynomial, and RBF kernels and retains the training kernel quantities needed for out-of-sample projection.
+
+```{r}
+predict(k,s$data[1:5,,drop=FALSE])
+```
+
+Ordinary variable loadings do not generally exist in the original measurement space, so correlation-circle interpretation is not automatically transferred from linear PCA.
+
+## Inverse nonlinear PCA
+
+When `pcaMethods` is installed, `method="nlpca"` delegates to its inverse nonlinear PCA engine. Nonlinear scores are the primary result; any auxiliary loading-like output should not be interpreted as ordinary classical eigenvectors.

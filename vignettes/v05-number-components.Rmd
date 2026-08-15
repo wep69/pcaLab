@@ -1,0 +1,154 @@
+---
+title: "Selecting the Number of Components"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Selecting the Number of Components}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why dimensionality is a scientific decision
+
+A retained rank $k$ controls how aggressively the data are compressed. Too few components may discard systematic structure. Too many preserve noise, reduce interpretability, and can destabilize later analyses. No single percentage-of-variance rule is universally valid.
+
+`pcaLab` therefore reports several criteria separately and makes disagreement visible.
+
+```{r}
+set.seed(1)
+s <- pca_simulate(n = 140, p = 10, rank = 3, noise = .25)
+fit <- pca_fit(s$data, scale = TRUE)
+sel <- pca_ncomp(
+  fit,
+  methods = c("scree", "cumulative", "kaiser", "broken_stick",
+              "parallel", "permutation", "rmt", "cv",
+              "stability", "ppca_bic"),
+  nperm = 49, nboot = 30, seed = 1
+)
+sel$recommendations
+sel$consensus
+sel$disagreement_range
+```
+
+## 1. Scree elbow
+
+The scree plot searches for a transition from large signal-dominated roots to a flatter tail. `pcaLab` uses a geometric elbow rule as an automated summary, but the plot remains descriptive and can be ambiguous when the spectrum decays smoothly.
+
+## 2. Cumulative explained variance
+
+The smallest $k$ satisfying
+
+$$
+\sum_{j=1}^{k}\frac{\lambda_j}{\sum_h\lambda_h}\ge c
+$$
+
+is retained for a user-defined threshold $c$. A value such as 0.80, 0.90, or 0.95 is a reporting convention, not a significance test.
+
+## 3. Kaiser criterion
+
+For correlation PCA, retain roots with
+
+$$
+\lambda_k>1.
+$$
+
+The rationale is that one standardized original variable contributes variance one. The criterion is not automatically applied to unscaled covariance PCA because the reference value one then has no invariant meaning.
+
+## 4. Broken-stick reference
+
+The broken-stick model compares observed variance proportions with the expected ordered lengths produced by random break points. It is a simple null-style descriptive benchmark and is useful as one piece of evidence rather than an absolute test.
+
+## 5. Horn-style parallel analysis
+
+Parallel analysis compares observed eigenvalues with eigenvalues generated from reference data having no planted component structure. In `pcaLab`, `pca_parallel(..., null = "normal")` uses a normal-reference model preserving the observed variable scales after preprocessing.
+
+A component passes only when its observed eigenvalue exceeds the selected upper quantile of the corresponding null root.
+
+## 6. Column-wise permutation reference
+
+`pca_parallel(..., null = "permutation")` permutes each variable independently. Marginal distributions are retained while inter-variable relationships are destroyed. This is closely aligned with the null logic used by PCAtest for standardized PCA inference.
+
+## 7. Marchenko-Pastur screening
+
+For standardized independent-noise matrices, with
+
+$$
+q=\frac{p}{n-1},
+$$
+
+the asymptotic upper edge is
+
+$$
+\lambda_+=(1+\sqrt q)^2.
+$$
+
+Sample roots above this edge are potential spikes. Dependence, heteroscedasticity, finite samples, non-Gaussianity, and preprocessing can change the null spectrum, so this is a screening reference, not a universal threshold.
+
+## 8. Masked reconstruction cross-validation
+
+`pca_cv()` hides a random subset of matrix cells, estimates a low-rank model from the remaining cells, and evaluates prediction error on the masked values. The package returns both the minimum-error rank and a one-standard-error choice favoring a simpler solution.
+
+```{r}
+cv <- pca_cv(fit, kmax = 6, repeats = 10, holdout = .10, seed = 1)
+cv$table
+cv$k_min
+cv$k
+```
+
+## 9. Bootstrap subspace stability
+
+A dimension should not be retained solely because it explains variance. `pca_stability()` asks whether the estimated loading subspace remains similar after resampling observations. The default selection summary uses both principal-angle and component-similarity criteria.
+
+## 10. PPCA-BIC
+
+Probabilistic PCA supplies a likelihood model with isotropic residual variance. `pcaLab` computes a BIC sequence over candidate latent ranks as an additional model-based criterion for complete Euclidean data.
+
+## 11. Engine-specific validation
+
+Not every PCA variant has Gaussian eigenvalue geometry. `pcaLab` refuses to silently transfer ordinary PCA rules to incompatible engines.
+
+For logistic PCA, for example:
+
+```{r, eval=FALSE}
+B <- matrix(rbinom(600, 1, .4), 100, 6)
+fl <- pca_fit(B, method = "logistic", ncomp = 2)
+pca_ncomp(fl, methods = "engine_cv", cv_folds = 5)
+```
+
+This uses the `logisticPCA` backend's cross-validated negative log likelihood. Kernel PCA is limited by the generic selector to descriptive feature-space scree/cumulative summaries. GLM-PCA and inverse nonlinear PCA require likelihood/deviance or other method-specific validation rather than ordinary eigenvalue heuristics.
+
+## Consensus is not a vote on truth
+
+The package's consensus is the rounded median of available recommendations. It is deliberately simple and transparent. It must not replace the individual evidence.
+
+A defensible report should include:
+
+- all criteria used;
+- the value recommended by each;
+- the disagreement range;
+- stability evidence;
+- scientific interpretability;
+- the final retained rank and the rationale for choosing it.
+
+When criteria disagree strongly, that disagreement is itself evidence that dimensionality is uncertain.
+
+## Building blocks of the criteria
+
+The broken-stick model gives expected proportions under a random partitioning of variance; `pca_parallel()` supplies the null reference used by Horn-style and permutation parallel analysis:
+
+```{r}
+pca_broken_stick(8)
+pca_parallel(iris[, 1:4], nperm = 49, null = "normal", seed = 1)$k
+pca_parallel(iris[, 1:4], nperm = 49, null = "permutation", seed = 1)$k
+```
+
+`pca_teach_ncomp()` runs several criteria at once and returns the transparent recommendation table:
+
+```{r}
+tn <- pca_teach_ncomp(nperm = 19)
+tn$data$recommendations
+```

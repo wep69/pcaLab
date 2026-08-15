@@ -1,0 +1,30 @@
+---
+title: "Sparse and Robust Sparse PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Sparse and Robust Sparse PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Sparse loadings
+
+Ordinary principal components often involve all variables. Sparse PCA imposes a sparsity structure to improve interpretability, but the resulting components need not retain every exact orthogonality/reconstruction property of classical PCA.
+
+```{r eval=FALSE}
+sp <- pca_fit(iris[,1:4],method="sparse",scale=TRUE,ncomp=2,backend="sparsepca")
+sp$extra$sparsity
+```
+
+## Do not reuse classical explained-variance formulas blindly
+
+Different sparse PCA algorithms define scores, loadings, deflation, and explained variance differently. pcaLab retains the backend result and marks sparse fits as non-orthogonal when the ordinary classical identities are not guaranteed.
+
+## Robust sparse PCA
+
+`method="robust_sparse"` adds resistance to outlying observations while favoring sparse loadings. It is distinct from low-rank-plus-sparse RPCA, where “sparse” refers to an error matrix rather than sparse variable loadings.

@@ -1,0 +1,31 @@
+---
+title: "Functional PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Functional PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Curves as observations
+
+When each observational unit is a curve sampled on a common grid, functional PCA treats variation across the domain as the object of interest. The dense-grid engine uses quadrature weights to approximate the $L^2$ inner product.
+
+```{r}
+grid <- seq(0,1,length.out=60)
+set.seed(1)
+X <- t(vapply(1:40,function(i) sin(2*pi*grid)+rnorm(60,sd=.15)+rnorm(1)*cos(2*pi*grid),numeric(60)))
+f <- pca_fit(X,method="functional",grid=grid,smooth=TRUE,ncomp=2)
+head(f$extra$eigenfunctions)
+```
+
+The returned eigenfunctions are loading vectors divided by the square root of the quadrature weights.
+
+## Multivariate functional PCA
+
+For genuine multivariate functional objects, `backend="MFPCA"` delegates to the optional `MFPCA` package. Functional eigenfunctions are preserved in the backend-specific object and are not forced into an ordinary variable-loading matrix.

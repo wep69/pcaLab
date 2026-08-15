@@ -1,0 +1,63 @@
+---
+title: "Multilevel PCA, ASCA, and Multiblock PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multilevel PCA, ASCA, and Multiblock PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Repeated measurements and multilevel decomposition
+
+For observations nested within subjects, `method="multilevel"` can fit PCA to within-subject deviations or between-subject means.
+
+```{r}
+X <- as.matrix(iris[,1:4])
+subject <- rep(1:30,length.out=nrow(X))
+w <- pca_fit(X,method="multilevel",subject=subject,level="within",scale=TRUE,ncomp=2)
+b <- pca_fit(X,method="multilevel",subject=subject,level="between",scale=TRUE,ncomp=2)
+```
+
+## ASCA for designed experiments
+
+ASCA first decomposes the multivariate response according to a linear-model design and then applies PCA to effect matrices.
+
+```{r}
+set.seed(1)
+d <- data.frame(A=factor(rep(1:2,each=12)),B=factor(rep(1:3,8)))
+Y <- cbind(y1=rnorm(24)+2*as.numeric(d$A), y2=rnorm(24)+as.numeric(d$B), y3=rnorm(24))
+a <- pca_asca(Y,~A+B,d,ncomp=2)
+a$effect_ss
+```
+
+## Multiblock PCA
+
+Blocks can be scaled by Frobenius norm or first singular value before concatenation, preventing a large block from dominating only because it contains more variables or greater total energy.
+
+```{r}
+mb <- pca_multiblock(list(morph=iris[,1:2],size=iris[,3:4]),ncomp=2,scale=TRUE)
+mb$extra$block_contributions
+```
+
+## Streaming (incremental) PCA
+
+For data that arrives in chunks, the incremental API accumulates running moments and finalizes an eigendecomposition without storing every observation:
+
+```{r}
+set.seed(9)
+X <- matrix(rnorm(600), 150, 4)
+st <- pca_incremental_init(4, center = TRUE, scale = TRUE)
+st <- pca_incremental_update(st, X[1:50, ])
+st <- pca_incremental_update(st, X[51:100, ])
+st <- pca_incremental_update(st, X[101:150, ])
+inc <- pca_incremental_finalize(st, ncomp = 2)
+inc$eigenvalues
+# compare with the batch eigendecomposition
+ref <- eigen(cov(scale(X, center = TRUE, scale = TRUE)), symmetric = TRUE)$values
+max(abs(inc$eigenvalues - ref[1:2]))
+```

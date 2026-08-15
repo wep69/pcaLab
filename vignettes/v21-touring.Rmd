@@ -1,0 +1,39 @@
+---
+title: "Projection Tours Anchored to PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Projection Tours Anchored to PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why tour after PCA?
+
+A two-dimensional PCA plot is only one projection. A local tour explores nearby projections to assess visual stability; a grand tour explores a broad set of projections; a guided tour optimizes a projection pursuit index.
+
+```{r eval=FALSE}
+fit <- pca_fit(iris[,1:4],scale=TRUE,ncomp=4)
+pca_tour(fit,type="local",group=iris$Species)
+pca_tour(fit,type="guided",group=iris$Species)
+h <- pca_tour(fit,type="history",save_history=TRUE)
+```
+
+## Interpret tours as exploration
+
+A projection discovered by a guided tour can reveal clustering or non-Gaussian structure that variance-maximizing PCA does not emphasize. This does not invalidate PCA; it means the projection objective is different.
+
+## Compare tour histories
+
+```{r}
+fit <- pca_fit(iris[,1:4],scale=TRUE,ncomp=4)
+tc <- pca_tour_compare(fit, max_bases = 10)
+length(tc$local)
+length(tc$grand)
+```
+
+`pca_tour_compare()` stores PCA, local, guided, and grand-tour histories for side-by-side investigation. The local history quantifies how much the PCA view changes under nearby rotations; the grand history samples the full projection space.

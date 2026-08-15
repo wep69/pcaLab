@@ -1,0 +1,64 @@
+---
+title: "Publication-Ready Figures, Tables, and Reports"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Publication-Ready Figures, Tables, and Reports}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Static figures
+
+```{r eval=FALSE}
+ex <- pca_example_agronomy()
+fit <- pca_fit(ex$data,scale=TRUE,ncomp=5)
+g <- pca_group(fit,ex$metadata$treatment,region="bootstrap",nboot=499,seed=1)
+
+p1 <- pca_plot(fit,"scores",group=ex$metadata$treatment,group_region=g)
+p2 <- pca_plot(fit,"correlation_circle")
+p3 <- pca_plot(fit,"scree")
+
+pca_export_plot(p1,"scores.pdf",width=7,height=5)
+pca_export_plot(p2,"variables.svg",width=6,height=6)
+pca_export_plot(p3,"scree.tiff",width=7,height=5,dpi=600)
+```
+
+The default theme is deliberately restrained and leaves color/palette decisions to the user or journal workflow.
+
+## Interactive 3D scores
+
+```{r eval=FALSE}
+pca_plot(fit,type="scores3d",dims=c(1,2,3),group=ex$metadata$treatment)
+```
+
+## Tables
+
+```{r eval=FALSE}
+e <- pca_table(fit,"eigenvalues")
+pca_export_table(e,"eigenvalues.xlsx")
+pca_export_table(e,"eigenvalues.tex")
+pca_export_table(e,"eigenvalues.docx")
+```
+
+## Reproducible report
+
+```{r eval=FALSE}
+sel <- pca_ncomp(fit,methods="all",nperm=499,nboot=200,seed=1)
+test <- pca_test(fit,nperm=999,seed=1)
+boot <- pca_boot(fit,nboot=999,seed=1)
+pca_report(fit,"analysis.md",inference=test,selection=sel,bootstrap=boot)
+```
+
+## The publication theme
+
+All static figures use `pca_theme_publication()`, which is exported so supplementary figures in a manuscript can reuse the same styling:
+
+```{r}
+fit <- pca_fit(iris[, 1:4], center = TRUE, scale = TRUE, ncomp = 3)
+pca_plot(fit, "scree") + pca_theme_publication(12)
+```

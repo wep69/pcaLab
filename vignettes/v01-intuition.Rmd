@@ -1,0 +1,73 @@
+---
+title: "PCA from Rotation to Dimensionality Reduction"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{PCA from Rotation to Dimensionality Reduction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Learning goals
+
+This vignette develops PCA from projection geometry rather than from software output. The sequence is: coordinates, rotation, projected variance, maximum-variance direction, orthogonal residual direction, and low-rank reconstruction.
+
+For centered data matrix $X$ and a unit direction $v$, projected scores are
+
+$$t=Xv$$
+
+and their sample variance is
+
+$$\operatorname{Var}(t)=v^T S v, \qquad S=\frac{X^TX}{n-1}.$$
+
+PCA chooses the unit vector that maximizes this quantity. In two dimensions the search can be visualized by rotating the projection direction through angles from 0 to 180 degrees.
+
+```{r}
+r <- pca_teach_rotation(angle = 35)
+r$equations
+v <- pca_teach_variance()
+head(v$data)
+```
+
+## Variance is a projection-specific quantity
+
+An orthogonal rotation preserves Euclidean distances and total variance, but redistributes variance among coordinate axes. This is why PCA can concentrate information in a small number of coordinates without changing the geometry of the complete rotated representation.
+
+```{r}
+fit <- pca_fit(iris[,1:4], scale = TRUE)
+fit$variance_explained
+fit$cumulative_variance
+```
+
+## Dimensionality reduction
+
+Using only the first $k$ components gives a rank-$k$ approximation:
+
+$$\widehat X_k=T_kV_k^T.$$
+
+The omitted component space is the residual space. Reduction is useful only when the retained approximation preserves scientifically relevant structure.
+
+```{r}
+t <- pca_teach_reconstruction(fit)
+t$data
+```
+
+PCA is unsupervised. Group labels displayed later do not define the principal axes.
+
+## Engine availability and the interactive laboratory
+
+`pca_capabilities()` reports which engines are available in the current installation:
+
+```{r}
+pca_capabilities()
+```
+
+The interactive laboratory `pca_teach_app()` connects rotation, projected variance, eigenvalues, scores, loadings, and reconstruction in a Shiny application. Launch it from an interactive session:
+
+```{r eval=FALSE}
+pca_teach_app(launch.browser = FALSE)
+```

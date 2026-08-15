@@ -1,0 +1,78 @@
+---
+title: "pcaLab Reproducible PCA Analysis"
+output: html_document
+params:
+  data: NULL
+  group: NULL
+---
+
+```{r setup, include=FALSE}
+library(pcaLab)
+knitr::opts_chunk$set(echo=TRUE,fig.width=7,fig.height=5)
+X <- params$data
+stopifnot(!is.null(X))
+```
+
+# Data audit
+
+```{r}
+doctor <- pca_doctor(X)
+doctor
+```
+
+# Classical PCA
+
+```{r}
+fit <- pca_fit(X,method="classical",center=TRUE,scale=TRUE)
+summary(fit)
+```
+
+# Dimensionality
+
+```{r}
+selection <- pca_ncomp(fit,methods="all",nperm=499,nboot=200,seed=2026)
+selection$recommendations
+pca_plot(fit,"dimension_selection",selection=selection)
+```
+
+# Inference and stability
+
+```{r}
+inference <- pca_test(fit,nperm=999,seed=2026)
+bootstrap <- pca_boot(fit,nboot=999,seed=2026)
+inference$global
+inference$axes
+```
+
+# Variable interpretation
+
+```{r}
+assoc <- pca_associate(fit,test=inference,boot=bootstrap)
+assoc
+pca_plot(fit,"correlation_circle")
+pca_plot(fit,"bootstrap_loadings",bootstrap=bootstrap,component=1)
+```
+
+# Scores
+
+```{r}
+if (is.null(params$group)) {
+  pca_plot(fit,"scores")
+} else {
+  rg <- pca_group(fit,params$group,region="bootstrap",nboot=999,seed=2026)
+  pca_plot(fit,"scores",group=params$group,group_region=rg)
+}
+```
+
+# Diagnostics
+
+```{r}
+pca_diagnose(fit)
+pca_plot(fit,"diagnostics")
+```
+
+# Reproducibility
+
+```{r}
+sessionInfo()
+```

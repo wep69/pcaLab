@@ -1,0 +1,73 @@
+---
+title: "Scores, Loadings, Contributions, and Biplots"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Scores, Loadings, Contributions, and Biplots}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Scores and loading directions
+
+Scores are observation coordinates in component space. Loadings are the coefficients that define linear component directions.
+
+```{r}
+fit <- pca_fit(iris[,1:4], scale=TRUE, ncomp=3)
+head(fit$scores)
+fit$loadings
+```
+
+For correlation PCA, variable-PC correlations satisfy approximately
+
+$$\operatorname{cor}(X_j,PC_k)=\sqrt{\lambda_k}\,v_{jk}.$$
+
+`pcaLab` reports raw loadings separately from correlation loadings.
+
+```{r}
+pca_table(fit,"variables",component=1)
+```
+
+## Contribution versus quality of representation
+
+Contribution asks how much a variable helps build a given axis. cos² asks how well a variable is represented by that component. These are not interchangeable.
+
+```{r eval=FALSE}
+pca_plot(fit,"contributions",component=1)
+pca_plot(fit,"cos2",component=1)
+pca_plot(fit,"correlation_circle")
+```
+
+## Biplot caution
+
+A biplot overlays observation and variable geometry. Its visual interpretation depends on scaling. `pcaLab` defaults to a readable display using correlation loadings when available, but it does not redefine biplot geometry as a hypothesis test.
+
+## Observation diagnostics and supplementary information
+
+`pca_diagnose()` flags observations with large score or orthogonal distances. `pca_supplementary()` projects new observations or extra variables without refitting the model:
+
+```{r}
+head(pca_diagnose(fit))
+sup <- pca_supplementary(fit,
+       observations = iris[1:3, 1:4],
+       variables = cbind(ratio = iris$Petal.Length / iris$Petal.Width))
+sup$variable_correlations
+```
+
+## Teaching objects for scores, loadings, and biplots
+
+The teaching functions return the same quantities with explanatory equations and interpretation steps:
+
+```{r}
+ts <- pca_teach_scores(fit)
+head(ts$data)
+tl <- pca_teach_loadings(fit)
+tl$data$cos2[, 1:2]
+tb <- pca_teach_biplot(fit, dims = c(1, 2))
+dim(tb$data$scores)
+dim(tb$data$loadings)
+```

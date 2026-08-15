@@ -1,0 +1,6 @@
+/doc/
+/Meta/
+*.Rcheck/
+.Rhistory
+.RData
+.Rproj.user/

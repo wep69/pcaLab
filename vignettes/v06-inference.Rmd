@@ -1,0 +1,49 @@
+---
+title: "Permutation Inference for PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Permutation Inference for PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Inferential target
+
+PCA itself is descriptive. `pca_test()` adds a permutation reference model by independently permuting each variable across observations, thereby destroying cross-variable association while preserving marginal distributions.
+
+Global statistics include
+
+$$\Psi=\sum_j(\lambda_j-1)^2$$
+
+and
+
+$$\Phi=\sqrt{\frac{\sum_j\lambda_j^2-p}{p(p-1)}}$$
+
+for standardized variables.
+
+```{r}
+fit <- pca_fit(iris[,1:4],scale=TRUE)
+test <- pca_test(fit,nperm=49,seed=10)
+test$global
+test$axes
+```
+
+## Axis and variable evidence
+
+The same null simulations provide empirical references for eigenvalues, a loading index, and variable-PC correlations. Multiplicity adjustment is applied to variable-level evidence.
+
+```{r}
+head(test$variable_index_q)
+head(test$variable_correlation_q)
+```
+
+Monte Carlo p-values use $(b+1)/(B+1)$ and therefore are never reported as zero.
+
+## Interpretation boundary
+
+These tests ask whether the observed PCA structure exceeds the chosen permutation null. They do not test treatment differences unless a separate design-based inferential model is specified.

@@ -1,0 +1,48 @@
+---
+title: "When PCA Is Not the Right Tool"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{When PCA Is Not the Right Tool}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Weak correlation or isotropic structure
+
+If variables are nearly uncorrelated and have similar standardized variance, no small set of linear directions may dominate. A flat eigenspectrum is an informative result rather than a software failure.
+
+## Curved manifolds
+
+Linear PCA may miss nonlinear dependence. Compare kernel or nonlinear methods only when the scientific objective supports nonlinear coordinates.
+
+## Discrete outcomes
+
+Binary/count data can require logistic or generalized PCA rather than Gaussian covariance PCA.
+
+## Compositions
+
+Closed proportions should usually be analyzed in log-ratio geometry rather than directly.
+
+## Repeated, temporal, functional, and multiblock data
+
+Ignoring data structure can produce misleading uncertainty and component interpretation. Use the corresponding structured methods when the design requires them.
+
+## Supervised separation is a different objective
+
+PCA is not a classifier and does not seek group separation. Coloring score plots by treatment after fitting is descriptive. If the scientific question is a treatment effect, use a design-based multivariate inferential model, ASCA/permutation design, discriminant method, mixed model, or other approach appropriate to the experiment.
+
+```{r}
+ex <- pca_example_agronomy()
+d <- pca_doctor(ex$data)
+d$warnings
+d$suggestions
+```
+
+## A practical decision rule
+
+Use PCA when the scientific question concerns dominant variance/covariance structure and a linear low-dimensional representation is meaningful. Select another method because its estimand matches the scientific question, not because it gives a visually cleaner plot.

@@ -1,0 +1,31 @@
+---
+title: "Cellwise Robust PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Cellwise Robust PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Cellwise contamination
+
+Modern wide data can contain a few bad cells in many rows. With enough variables, almost every row may contain at least one contaminated cell. This differs from classical casewise contamination.
+
+```{r}
+s <- pca_simulate(n=120,p=20,rank=3,cellwise=.03,seed=5)
+```
+
+If `cellWise` is installed:
+
+```{r eval=FALSE}
+fit <- pca_fit(s$data,method="cellwise",scale=TRUE,ncomp=3)
+fit$extra$cellwise_map
+fit$extra$rowwise_flags
+```
+
+The MacroPCA backend combines missing-value handling with rowwise and cellwise robustness. Backend-specific cell flags are preserved rather than converted into unverified generic outlier scores.

@@ -1,0 +1,29 @@
+---
+title: "State of the Art, Gaps, and Competing Packages"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{State of the Art, Gaps, and Competing Packages}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Scientific positioning
+
+pcaLab does not claim that existing PCA software lacks advanced algorithms. Its contribution is a unified workflow that links pedagogy, dimensionality selection, inferential reference models, bootstrap/subspace stability, robust/nonlinear/structured extensions, tours, diagnostics, and publication outputs.
+
+Important neighboring packages include base R `prcomp`, FactoMineR/factoextra for conventional exploration, PCAtools for high-quality PCA workflows, pcaMethods for missing-data and Bayesian/nonlinear methods, rospca/rrcov for robust methods, cellWise for cellwise robustness, sparsepca/elasticnet for sparse methods, logisticPCA and glmpca for generalized low-rank models, MFPCA for multivariate functional PCA, irlba for truncated SVD, and tourr for projection tours.
+
+## Design gap
+
+The gap is the lack of a single auditable path from “what is an eigenvector?” to “is this axis stronger than a null reference?”, “is this loading stable under resampling?”, “would robust PCA change the subspace?”, and “can the final figure/table be exported for publication?”
+
+## Reference basis
+
+The teaching sequence is inspired by Saccenti (2024), while permutation inference follows the conceptual organization of Camargo's PCAtest. The package source bibliography also records foundational and advanced PCA references.
+
+See `STATE_OF_ART.md` and `inst/references/REFERENCES.bib` in the source package for the maintained reference list.

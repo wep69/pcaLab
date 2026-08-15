@@ -1,0 +1,43 @@
+---
+title: "High-Dimensional and Regularized PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{High-Dimensional and Regularized PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## The p greater than n setting
+
+For centered data, there are at most $n-1$ nonzero classical principal components. Sample covariance eigenvalues become unstable when $p$ is large relative to $n$.
+
+```{r}
+s <- pca_simulate(n=40,p=120,rank=4,noise=.4,seed=7)
+f <- pca_fit(s$data,method="classical",scale=TRUE,ncomp=10)
+f$ncomp
+```
+
+## Shrinkage PCA
+
+With `corpcor`, `method="shrinkage"` uses a shrinkage covariance estimator before eigendecomposition.
+
+```{r eval=FALSE}
+sh <- pca_fit(s$data,method="shrinkage",scale=TRUE,ncomp=5)
+```
+
+## Randomized SVD
+
+`method="randomized"` uses `irlba` when available and is intended for large rectangular matrices where only a small number of components is required.
+
+## Random-matrix screening
+
+For unit-variance independent noise, the Marchenko-Pastur upper edge is
+
+$$\lambda_+=(1+\sqrt q)^2, \qquad q=p/(n-1).$$
+
+`pca_ncomp(..., methods="rmt")` counts sample eigenvalues above this edge. It is a screening reference, not a universal law for dependent, heteroscedastic, or strongly non-Gaussian data.

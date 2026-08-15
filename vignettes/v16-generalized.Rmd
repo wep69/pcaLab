@@ -1,0 +1,125 @@
+---
+title: "Generalized PCA for Binary and Count Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Generalized PCA for Binary and Count Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why ordinary covariance PCA may be inappropriate
+
+Ordinary PCA is a least-squares method for numeric measurements embedded in Euclidean geometry. Binary and count matrices have constrained supports and mean-variance relationships that are not represented by a Gaussian squared-error model. Applying ordinary PCA to such data can still be useful descriptively in some settings, but the resulting variance decomposition should not be confused with a likelihood-based decomposition that respects the response distribution.
+
+`pcaLab` therefore treats generalized low-rank models as a separate family. The common `pca_fit` interface is retained for workflow consistency, while interpretation, fitted values, dimensionality selection, and diagnostics remain engine-specific whenever classical PCA quantities are not mathematically transferable.
+
+## Logistic PCA for binary matrices
+
+For a binary matrix, the optional `logisticPCA` engine estimates low-dimensional structure on the natural-parameter, or logit, scale. The backend supplies its own loading matrix, score matrix, fitted values, prediction method, and proportion of deviance explained.
+
+```{r eval=FALSE}
+set.seed(1)
+X <- matrix(rbinom(600, 1, 0.35), 100, 6)
+colnames(X) <- paste0("trait", 1:6)
+
+fit_bin <- pca_fit(
+  X,
+  method = "logistic",
+  ncomp = 2,
+  m = 4
+)
+
+fit_bin$scores
+fit_bin$loadings
+fit_bin$extra$proportion_deviance_explained
+head(fitted(fit_bin))
+```
+
+The fitted response is a matrix of Bernoulli probabilities. It is not a Euclidean rank-2 reconstruction of the observed 0/1 matrix.
+
+```{r eval=FALSE}
+prob <- pca_reconstruct(fit_bin)
+range(prob)
+```
+
+New binary observations can be projected with the native backend prediction method.
+
+```{r eval=FALSE}
+new_scores <- predict(fit_bin, X[1:5, , drop = FALSE])
+```
+
+### Selecting the latent rank
+
+Classical rules such as Kaiser, broken stick, Marchenko-Pastur screening, or a covariance-PCA parallel analysis are not silently applied to logistic PCA. `pca_ncomp()` uses the engine-specific cross-validation criterion when requested. The current adapter uses the cross-validated negative log likelihood returned by `logisticPCA::cv.lpca()`.
+
+```{r eval=FALSE}
+sel_bin <- pca_ncomp(
+  fit_bin,
+  methods = "engine_cv",
+  cv_folds = 5,
+  seed = 123
+)
+sel_bin$recommendations
+```
+
+This distinction is important. A component number that is optimal for reconstruction of Gaussian measurements need not be optimal for Bernoulli likelihood.
+
+## GLM-PCA for counts and other exponential-family data
+
+The optional `glmpca` backend fits generalized linear model PCA. Its native convention is **features in rows and observations in columns**. The public `pcaLab` convention remains observations in rows and variables in columns, so the adapter transposes the input before calling the backend and converts the fitted quantities back to the package convention.
+
+For Poisson counts:
+
+```{r eval=FALSE}
+set.seed(2)
+X_count <- matrix(rpois(600, lambda = 5), 100, 6)
+colnames(X_count) <- paste0("taxon", 1:6)
+
+gfit <- pca_fit(
+  X_count,
+  method = "glmpca",
+  ncomp = 2,
+  fam = "poi"
+)
+
+dim(gfit$scores)    # observations x components
+dim(gfit$loadings)  # variables x components
+dim(fitted(gfit))   # observations x variables
+```
+
+The adapter also accepts backend-supported families exposed by `pcaLab`, including negative-binomial and binomial variants where the input satisfies the required data constraints.
+
+## Scores, loadings, and fitted values are not enough to make methods equivalent
+
+The common object structure is intentionally pragmatic. It allows plotting, reporting, and method comparison without pretending that all engines optimize the same objective. For generalized models:
+
+* `scores` are latent observation coordinates;
+* `loadings` are latent variable coefficients supplied by the backend;
+* fitted values are model means or probabilities on the response scale;
+* the appropriate goodness-of-fit measure is likelihood/deviance based, not automatically covariance variance explained;
+* new-data projection is exposed only when the backend defines a valid prediction operation.
+
+`glmpca` currently provides fitted mean prediction for the fitted data through the adapter, but `pcaLab` deliberately does not manufacture a classical loading-projection rule for arbitrary new count matrices because that would not reproduce the fitted generalized model.
+
+## Comparison with ordinary PCA
+
+A generalized model and ordinary PCA may give visually similar score maps while answering different optimization problems. Comparisons should therefore use quantities meaningful to both methods, such as downstream predictive performance or externally defined structure, or use each engine's own objective. Do not rank a generalized model against a Gaussian PCA solely by the percentage of classical variance explained.
+
+## Reporting checklist
+
+A publication should report at least:
+
+1. the response distribution or generalized family;
+2. the retained latent rank and how it was selected;
+3. the software engine and important tuning parameters;
+4. whether main effects or offsets were included by the backend;
+5. the quantity shown as model fit, such as deviance explained or held-out log likelihood;
+6. whether scores/loadings are interpreted on a latent natural-parameter scale;
+7. how fitted values and any new-data projections were obtained.
+
+The central principle is to preserve the statistical geometry of the data type rather than forcing every advanced method into the language of ordinary covariance PCA.

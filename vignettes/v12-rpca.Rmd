@@ -1,0 +1,36 @@
+---
+title: "Low-Rank Plus Sparse Robust PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Low-Rank Plus Sparse Robust PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Matrix decomposition target
+
+Principal Component Pursuit decomposes
+
+$$X=L+S$$
+
+where $L$ is low rank and $S$ is sparse. A common convex formulation is
+
+$$\min_{L,S}\|L\|_*+\lambda\|S\|_1\quad\text{subject to }X=L+S.$$
+
+`pcaLab` implements an inexact augmented-Lagrangian/SVT solver.
+
+```{r}
+set.seed(1)
+L <- matrix(rnorm(120),40,3) %*% matrix(rnorm(30),3,10)
+S <- matrix(0,40,10); S[sample(length(S),12)] <- rnorm(12,12,2)
+fit <- pca_fit(L+S,method="rpca",center=FALSE,scale=FALSE,ncomp=3,max_iter=500)
+fit$extra$converged
+sqrt(mean(((L+S)-fit$extra$low_rank-fit$extra$sparse)^2))
+```
+
+PCA is then applied to the recovered low-rank matrix. This engine should be interpreted as matrix decomposition followed by PCA, not as ROBPCA.

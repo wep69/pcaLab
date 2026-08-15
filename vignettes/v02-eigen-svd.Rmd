@@ -1,0 +1,361 @@
+---
+title: "Eigenvalues, Eigenvectors, and SVD: Why PCA Works"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Eigenvalues, Eigenvectors, and SVD: Why PCA Works}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Learning goals
+
+This vignette explains the mathematical core of PCA without treating eigendecomposition as a black box. After working through it, the reader should be able to explain:
+
+1. what an eigenvector is geometrically;
+2. what an eigenvalue measures in PCA;
+3. why maximizing projected variance creates an eigenvalue problem;
+4. why successive PCs are orthogonal for ordinary symmetric covariance PCA;
+5. how scores, loadings, eigenvalues, singular values, and reconstruction are connected;
+6. why loading signs are arbitrary;
+7. why nearly equal eigenvalues make individual loading vectors unstable;
+8. why SVD is usually preferable to forming the covariance matrix explicitly.
+
+## From centered observations to a covariance operator
+
+Let the centered data matrix be
+
+$$
+X_c = X - \mathbf{1}\bar{x}^{T},
+$$
+
+with $n$ observations in rows and $p$ variables in columns. The sample covariance matrix is
+
+$$
+S = \frac{1}{n-1}X_c^T X_c.
+$$
+
+$S$ is symmetric and positive semidefinite. Its diagonal contains variable variances and its off-diagonal elements contain covariances. When variables are standardized first, $S$ becomes the sample correlation matrix.
+
+The distinction matters. Covariance PCA asks which directions explain the greatest variance in the original measurement scales. Correlation PCA asks the same question after each variable has been given unit marginal variance.
+
+```{r}
+X <- iris[, 1:4]
+cov_fit <- pca_fit(X, center = TRUE, scale = FALSE)
+cor_fit <- pca_fit(X, center = TRUE, scale = TRUE)
+cov_fit$eigenvalues
+cor_fit$eigenvalues
+```
+
+## What is an eigenvector?
+
+For a square matrix $S$, a nonzero vector $v$ is an eigenvector when
+
+$$
+Sv = \lambda v.
+$$
+
+The transformation $S$ therefore does not rotate $v$ away from its own line. It only stretches, shrinks, or, for a general matrix, reverses it by the scalar $\lambda$.
+
+For a covariance matrix, eigenvalues are non-negative. In PCA, the eigenvectors define principal directions and their eigenvalues quantify variance along those directions.
+
+```{r}
+e <- pca_teach_eigen(X, scale = TRUE)
+e$data$covariance
+e$data$eigenvalues
+e$data$eigenvectors
+e$data$eigen_equation_residual
+```
+
+The final quantity numerically checks $\|Sv_k-\lambda_kv_k\|$. It should be close to zero up to floating-point error.
+
+## Why maximizing variance leads to an eigenvalue problem
+
+Consider projecting each centered observation onto a unit vector $v$. The score vector is
+
+$$
+t = X_c v.
+$$
+
+Because the data are centered, the sample variance of these scores is
+
+$$
+\operatorname{Var}(t)
+= \frac{1}{n-1}t^Tt
+= \frac{1}{n-1}v^T X_c^T X_c v
+= v^T S v.
+$$
+
+Without a constraint, multiplying $v$ by an arbitrarily large constant would make the projected variance arbitrarily large. PCA therefore imposes
+
+$$
+v^Tv=1.
+$$
+
+The first PC solves
+
+$$
+\max_v v^TSv \qquad \text{subject to} \qquad v^Tv=1.
+$$
+
+The Lagrangian is
+
+$$
+\mathcal{L}(v,\lambda)=v^TSv-\lambda(v^Tv-1).
+$$
+
+Differentiating with respect to $v$ gives
+
+$$
+2Sv-2\lambda v=0,
+$$
+
+hence
+
+$$
+Sv=\lambda v.
+$$
+
+The constrained maximum-variance problem is therefore exactly an eigenvalue problem. The maximizing direction is the eigenvector associated with the largest eigenvalue.
+
+## The Rayleigh quotient
+
+The quantity
+
+$$
+R(v)=\frac{v^TSv}{v^Tv}
+$$
+
+is the Rayleigh quotient. For a symmetric matrix,
+
+$$
+\lambda_{\min}\le R(v)\le\lambda_{\max}.
+$$
+
+Thus the largest eigenvalue is not just an algebraic output. It is the largest variance obtainable by any one-dimensional unit projection of the centered data.
+
+```{r}
+v <- pca_teach_variance(X[, 1:2])
+v$data[which.max(v$data$projected_variance), ]
+```
+
+## Why the eigenvalue equals component variance
+
+For a normalized eigenvector $v_k$,
+
+$$
+Sv_k=\lambda_kv_k.
+$$
+
+Then
+
+$$
+\operatorname{Var}(X_cv_k)
+= v_k^TSv_k
+= v_k^T\lambda_kv_k
+= \lambda_k v_k^Tv_k
+= \lambda_k.
+$$
+
+Therefore
+
+$$
+\boxed{\lambda_k=\operatorname{Var}(PC_k)}.
+$$
+
+The proportion of total variance explained by component $k$ is
+
+$$
+\operatorname{PVE}_k=
+\frac{\lambda_k}{\sum_j \lambda_j}.
+$$
+
+For centered covariance PCA,
+
+$$
+\sum_j\lambda_j=\operatorname{tr}(S)=\sum_{j=1}^p\operatorname{Var}(X_j).
+$$
+
+The trace identity explains conservation of total variance under an orthogonal rotation.
+
+## Why later components are different
+
+PC2 must maximize remaining variance while being orthogonal to PC1:
+
+$$
+\max_{v_2} v_2^TSv_2
+$$
+
+subject to
+
+$$
+v_2^Tv_2=1,
+\qquad
+v_2^Tv_1=0.
+$$
+
+For symmetric $S$, eigenvectors corresponding to distinct eigenvalues are orthogonal. Repeating the construction yields an orthonormal basis ordered by decreasing variance.
+
+The score covariance matrix becomes diagonal:
+
+$$
+\operatorname{Cov}(T)=V^TSV=\Lambda.
+$$
+
+Thus ordinary PCA scores are uncorrelated. Uncorrelated does **not** imply independent unless additional distributional conditions, such as joint multivariate normality, hold.
+
+## Loadings are directions, scores are coordinates
+
+If
+
+$$
+V=[v_1,\ldots,v_k],
+$$
+
+then
+
+$$
+T=X_cV.
+$$
+
+Each column of $V$ is a loading direction. Each row of $T$ gives the coordinates of one observation in the retained PC system.
+
+```{r}
+f <- pca_fit(X, scale = TRUE, ncomp = 3)
+head(f$scores)
+f$loadings
+```
+
+For standardized PCA, the correlation between original variable $j$ and PC $k$ is
+
+$$
+\operatorname{cor}(X_j,PC_k)=\sqrt{\lambda_k}v_{jk}.
+$$
+
+This is a **correlation loading**. It is not numerically identical to the eigenvector loading unless the eigenvalue is one.
+
+## Sign ambiguity
+
+If
+
+$$
+Sv=\lambda v,
+$$
+
+then
+
+$$
+S(-v)=\lambda(-v).
+$$
+
+Therefore $v$ and $-v$ define the same axis. Software implementations may return opposite signs without disagreeing scientifically. A valid comparison should align signs or compare sign-invariant quantities such as absolute vector correlations, projection matrices, or principal angles.
+
+This also means that statements based solely on the sign of a loading must be interpreted relative to the signs of other quantities on the same component, not as an absolute orientation in space.
+
+## Equal and nearly equal eigenvalues
+
+If $\lambda_1=\lambda_2$, the corresponding two-dimensional eigenspace is identifiable but the individual basis vectors inside that space are not unique. Any orthonormal rotation of those two eigenvectors spans the same solution space.
+
+If $\lambda_1$ and $\lambda_2$ are merely close, small sampling perturbations can cause large rotations of the estimated individual eigenvectors. This is why `pca_boot()` aligns bootstrap components and why `pca_stability()` evaluates nested subspaces using principal angles.
+
+```{r}
+set.seed(2)
+s <- pca_simulate(n = 100, p = 6, rank = 2, noise = .4)
+f2 <- pca_fit(s$data, scale = TRUE, ncomp = 2)
+st <- pca_stability(f2, nboot = 30, seed = 2)
+st$summary
+```
+
+A stable two-dimensional subspace can coexist with unstable PC1/PC2 orientations when the first two eigenvalues are nearly tied.
+
+## Rank and the maximum number of nonzero components
+
+For centered data,
+
+$$
+\operatorname{rank}(X_c)\le \min(p,n-1).
+$$
+
+Consequently, there can be at most
+
+$$
+\min(p,n-1)
+$$
+
+nonzero principal components. This is especially important when $p\gg n$: thousands of variables do not create thousands of estimable nonzero sample PCs when only a small number of observations is available.
+
+## SVD formulation
+
+Rather than eigendecomposing $X_c^TX_c$, compute
+
+$$
+X_c=UDV^T.
+$$
+
+Then
+
+$$
+X_c^TX_c=VD^2V^T.
+$$
+
+Therefore:
+
+$$
+\boxed{\text{loadings}=V},
+$$
+
+$$
+\boxed{\text{scores}=UD=X_cV},
+$$
+
+and
+
+$$
+\boxed{\lambda_k=d_k^2/(n-1)}.
+$$
+
+```{r}
+s <- pca_teach_svd(X, scale = TRUE)
+s$data$eigenvalues
+```
+
+`pca_fit(method = "classical")` uses SVD because it avoids explicitly squaring the condition number through $X^TX$ and naturally handles rectangular matrices.
+
+## Reconstruction and the low-rank approximation
+
+Keeping the first $k$ components gives
+
+$$
+\widehat X_k=T_kV_k^T=U_kD_kV_k^T.
+$$
+
+For ordinary least-squares PCA, the truncated SVD is the best rank-$k$ approximation in Frobenius norm. The residual is
+
+$$
+E_k=X_c-\widehat X_k.
+$$
+
+```{r}
+r <- pca_teach_reconstruction(f)
+r$data
+```
+
+As $k$ increases, reconstruction error cannot increase for classical PCA. Choosing $k$, however, is not only a reconstruction problem. Stability, null-reference evidence, interpretability, and the scientific purpose of the analysis must also be considered.
+
+## Practical interpretation checklist
+
+Before interpreting an eigenvector or eigenvalue:
+
+1. verify whether PCA used covariance or correlation geometry;
+2. inspect the eigenspectrum and uncertainty in retained dimensions;
+3. distinguish eigenvector loadings from variable-PC correlations;
+4. remember the arbitrary sign convention;
+5. examine whether neighboring eigenvalues are close;
+6. assess bootstrap/subspace stability before assigning strong meaning to individual loading coefficients;
+7. interpret PCs in the context of the measured variables and study design.
+
+The pedagogical sequence used here follows the rotation-to-variance logic of Saccenti's teaching framework while extending it with explicit eigenvalue derivation, Rayleigh-quotient interpretation, rank, subspace identifiability, bootstrap stability, and SVD computation.

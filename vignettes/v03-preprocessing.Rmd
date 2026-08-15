@@ -1,0 +1,52 @@
+---
+title: "Preprocessing, Scaling, and Data Audit"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preprocessing, Scaling, and Data Audit}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Preprocessing is part of the model
+
+PCA is sensitive to centering, scaling, and transformations. The chosen preprocessing must therefore be recorded and interpreted scientifically rather than selected only to improve visual separation.
+
+```{r}
+a <- pca_preprocess(iris[,1:4], center=TRUE, scale=TRUE, na_action="fail")
+a$audit
+```
+
+## Scaling options
+
+`pcaLab` supports no scaling, unit-variance scaling, Pareto scaling, range scaling, and VAST scaling. Unit-variance scaling changes a covariance PCA into a correlation-like PCA and prevents a high-variance measurement unit from dominating only because of scale.
+
+```{r}
+u <- pca_fit(iris[,1:4], scale=FALSE)
+z <- pca_fit(iris[,1:4], scale=TRUE)
+cbind(unscaled=u$variance_explained[1:3], standardized=z$variance_explained[1:3])
+```
+
+## Missingness and constant variables
+
+`pca_doctor()` summarizes missingness, correlation concentration, p/n geometry, a simple nonlinearity warning, covariance conditioning, and conventional-PCA influence diagnostics.
+
+```{r}
+pca_doctor(iris[,1:4])
+```
+
+A constant variable is not informative for PCA. A scaling factor that is zero is replaced by 1 with a warning so the issue is visible rather than silently discarded.
+
+## Scaling demonstrated step by step
+
+`pca_teach_scaling()` fits covariance and correlation PCA side by side so the effect of unit-variance scaling is visible:
+
+```{r}
+ts <- pca_teach_scaling()
+cbind(covariance = ts$data$covariance_pca$variance_explained[1:2],
+      correlation = ts$data$correlation_pca$variance_explained[1:2])
+```

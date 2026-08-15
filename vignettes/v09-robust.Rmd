@@ -1,0 +1,35 @@
+---
+title: "Casewise Robust PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Casewise Robust PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why classical PCA is sensitive to outliers
+
+PCA maximizes variance, so a small number of extreme observations can define the first component. Casewise robust PCA targets contamination where complete rows are atypical.
+
+```{r}
+s <- pca_simulate(n=120,p=8,rank=2,noise=.25,casewise=.08,seed=3)
+classical <- pca_fit(s$data,scale=TRUE,ncomp=2)
+```
+
+When `rospca` is installed:
+
+```{r eval=FALSE}
+robust <- pca_fit(s$data,method="robust",scale=TRUE,ncomp=2)
+pca_compare(list(classical=classical,robust=robust))
+```
+
+The robust engine wraps ROBPCA and retains robust center, score distance, orthogonal distance, and backend diagnostics when available.
+
+## Robustness is not cellwise robustness
+
+If only scattered cells are contaminated, flagging or downweighting entire rows can discard substantial clean information. Use the cellwise engine for that contamination model.

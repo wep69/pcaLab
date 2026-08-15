@@ -1,0 +1,15 @@
+citHeader("To cite pcaLab in publications, cite the package version and the methodological references corresponding to the engine used.")
+
+bibentry(
+  bibtype = "Manual",
+  title = "pcaLab: Teaching, Inference, Robustness, and Advanced Principal Component Analysis",
+  author = person(given = c("Walter", "Esfrain"), family = "Pereira",
+                  comment = c(ORCID = "0000-0003-1085-0191")),
+  year = "2026",
+  note = "R package version 0.1.0",
+  textVersion = paste(
+    "Pereira, W. E. (2026).",
+    "pcaLab: Teaching, Inference, Robustness, and Advanced Principal Component Analysis.",
+    "R package version 0.1.0."
+  )
+)

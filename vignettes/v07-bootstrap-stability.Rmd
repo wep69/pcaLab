@@ -1,0 +1,45 @@
+---
+title: "Bootstrap Uncertainty and Subspace Stability"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bootstrap Uncertainty and Subspace Stability}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## Why naive PCA bootstrap is difficult
+
+Bootstrap refits can reverse signs or exchange adjacent components. `pca_boot()` therefore aligns bootstrap loading vectors to the reference solution before summarizing uncertainty.
+
+```{r}
+fit <- pca_fit(iris[,1:4],scale=TRUE,ncomp=3)
+b <- pca_boot(fit,nboot=49,seed=1)
+b$eigenvalue_ci
+b$pve_ci
+b$sign_stability
+```
+
+## Near-degenerate eigenvalues
+
+When eigenvalues are close, individual axes can rotate substantially. `pca_stability()` evaluates nested loading subspaces using principal angles.
+
+```{r}
+st <- pca_stability(fit,nboot=49,kmax=3,seed=2)
+st$summary
+```
+
+A stable two-dimensional subspace with unstable PC1/PC2 directions should be interpreted as a stable plane rather than as two sharply identifiable axes.
+
+## Variable association
+
+Bootstrap intervals and sign stability can be combined with permutation evidence and effect measures.
+
+```{r}
+a <- pca_associate(fit,boot=b)
+head(a)
+```
