@@ -1,0 +1,573 @@
+---
+title: "Classical PCA in Practice: Preprocessing, Scores, Loadings, Biplots, Prediction, and Supplementary Information"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Classical PCA in Practice: Preprocessing and Interpretation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Classical PCA in Practice: Preprocessing, Scores, Loadings, Biplots, Prediction, and Supplementary Information
+
+**Package:** `pcaLab`  
+**Target version:** `0.1.0`  
+**Role in the vignette system:** The complete classical PCA workflow, emphasizing preprocessing as part of the model and separating observation geometry from variable interpretation.
+
+> This source is intentionally instructional. It is not precompiled here. Code that requires an optional backend is guarded in the examples or should be run only after `pca_capabilities()` confirms availability.
+
+## Learning objectives
+
+The reader will learn to:
+
+1. audit variable types, scales, missingness, and possible nonlinearity with `pca_doctor()`;
+2. choose centering, unit-variance scaling, Pareto scaling, range scaling, or no scaling for defensible reasons;
+3. fit classical and weighted PCA through `pca_fit()`;
+4. interpret scores, loadings, correlation loadings, contributions, cos², and communalities correctly;
+5. use biplots without conflating different scaling conventions;
+6. project new observations without refitting;
+7. add supplementary observations, variables, treatments, cultivars, or environments while preserving the unsupervised nature of the fit;
+8. distinguish descriptive group separation from formal evidence.
+
+## Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** The complete classical PCA workflow, emphasizing preprocessing as part of the model and separating observation geometry from variable interpretation.
+
+**Not developed here:** Detailed component retention, permutation inference, bootstrap alignment, and robust alternatives are handled in later vignettes.
+
+# Part II. The basic PCA workflow
+
+## 8. Audit and preprocess before fitting PCA
+
+### 8.1 Start with the agronomy example
+
+```r
+ex <- pca_example_agronomy(seed = 42)
+X <- ex$data
+meta <- ex$metadata
+
+head(X)
+head(meta)
+```
+
+### 8.2 Run the PCA doctor
+
+```r
+doc <- pca_doctor(
+  X,
+  scale = TRUE,
+  nonlinear_check = TRUE
+)
+
+doc$n
+doc$p
+doc$missing_rate
+doc$mean_abs_correlation
+doc$max_abs_correlation
+doc$curvature_score
+doc$condition_number
+doc$warnings
+doc$suggestions
+```
+
+`pca_doctor()` is not an automatic method selector. It is a structured warning system. It checks features such as weak average linear correlation, `p > n`, missingness, generic influence diagnostics, and simple curvature evidence.
+
+### 8.3 Audit variable scales and missingness
+
+```r
+prep <- pca_preprocess(
+  X,
+  center = TRUE,
+  scale = TRUE,
+  transform = "none",
+  na_action = "fail"
+)
+
+prep$audit
+```
+
+The preprocessing audit includes:
+
+| Field | Meaning |
+|---|---|
+| `mean_raw` | raw variable mean |
+| `sd_raw` | raw variable standard deviation |
+| `missing` | number of missing observations |
+| `unique` | number of observed unique values |
+| `zero_variance` | whether a variable lacks usable variation |
+
+### 8.4 Scaling is a scientific choice
+
+The package supports:
+
+```r
+pca_preprocess(X, scale = FALSE)
+pca_preprocess(X, scale = TRUE)
+pca_preprocess(X, scale = "uv")
+pca_preprocess(X, scale = "pareto")
+pca_preprocess(X, scale = "range")
+pca_preprocess(X, scale = "vast")
+```
+
+Use the teaching comparison:
+
+```r
+scale_demo <- pca_teach_scaling(X)
+scale_demo$concept
+scale_demo$steps
+```
+
+**Interpretation.** In this agronomy dataset, plant height may vary by tens of centimeters while stomatal conductance varies by fractions of a unit. Covariance PCA would give much more influence to variables with larger numerical variance. Unit-variance scaling asks a different question: what multivariate structure appears when each variable is first given equal marginal variance?
+
+Neither choice is universally correct.
+
+### 8.5 Transformations
+
+For appropriate non-negative or strongly skewed data:
+
+```r
+# Positive count-like or concentration-like measurements.
+Xp <- abs(X) + 1
+
+prep_log <- pca_preprocess(
+  Xp,
+  center = TRUE,
+  scale = TRUE,
+  transform = "log1p"
+)
+
+prep_sqrt <- pca_preprocess(
+  Xp,
+  center = TRUE,
+  scale = TRUE,
+  transform = "sqrt"
+)
+```
+
+Transformations change the geometry of the analysis. They should therefore be justified and reported.
+
+### 8.6 Weighted PCA when observations have known unequal importance
+
+Weighted PCA is appropriate when observation weights arise from design, precision, sampling effort, or another defensible external source. It should not be used as an undocumented way to suppress observations that look inconvenient in an initial PCA.
+
+Create a simple precision-weight example in which the first six plots are assigned lower precision:
+
+```r
+w <- rep(1, nrow(X))
+w[1:6] <- 0.50
+
+fit_weighted <- pca_fit(
+  X,
+  method = "weighted",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3,
+  weights = w
+)
+
+fit_weighted
+```
+
+Variable weights can also be supplied when the scientific analysis requires a weighted variable metric:
+
+```r
+vw <- rep(1, ncol(X))
+names(vw) <- colnames(X)
+vw["yield"] <- 1.5
+
+fit_weighted_var <- pca_fit(
+  X,
+  method = "weighted",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3,
+  weights = w,
+  variable_weights = vw
+)
+```
+
+**Interpretation.** Weighting changes the covariance geometry. The resulting axes answer a weighted-data question and are not interchangeable with an unweighted PCA. Report the source and meaning of every weight.
+
+---
+
+## 9. Fit a classical PCA
+
+### 9.1 Fit the full meaningful rank first
+
+```r
+fit <- pca_fit(
+  X,
+  method = "classical",
+  center = TRUE,
+  scale = TRUE
+)
+
+fit
+summary(fit)
+```
+
+The object stores a common set of fields whenever the engine supports them:
+
+```r
+names(fit)
+```
+
+Key fields include:
+
+| Object field | Interpretation |
+|---|---|
+| `scores` | observation coordinates in PC space |
+| `loadings` | eigenvector/loading directions |
+| `eigenvalues` | component variances for ordinary linear PCA |
+| `variance_explained` | proportion of total variance captured by each component |
+| `cumulative_variance` | cumulative PVE |
+| `correlation_loadings` | correlations between original variables and component scores |
+| `cos2` | squared variable-PC correlations |
+| `contributions` | squared loading shares used to build the component |
+| `communalities` | cumulative representation of a variable over retained PCs |
+| `preprocessing` | centering, scaling, transformation, and audit information |
+| `extra` | engine-specific quantities |
+
+### 9.2 Inspect the eigenspectrum
+
+```r
+pca_table(fit, type = "eigenvalues")
+```
+
+Publication-ready scree plot:
+
+```r
+p_scree <- pca_plot(fit, type = "scree")
+p_scree
+```
+
+Cumulative variance:
+
+```r
+p_cum <- pca_plot(fit, type = "cumulative")
+p_cum
+```
+
+### 9.3 Basic agronomic interpretation
+
+Because the synthetic generator imposes a treatment-linked latent gradient that contributes positively to plant height, leaf area, chlorophyll, photosynthesis, stomatal conductance, biomass, and yield, the first standardized component should generally reflect a broad performance or vigor gradient.
+
+A secondary latent factor enters the traits with different coefficients, so PC2 should tend to separate physiological trade-offs that are not explained by the common treatment gradient.
+
+When interpreting the local result, verify this expectation from the actual loading and correlation tables rather than assuming that PC1 always means "overall vigor."
+
+---
+
+## 10. Scores are coordinates of observations
+
+Use the teaching object:
+
+```r
+scores_demo <- pca_teach_scores(fit)
+scores_demo$concept
+head(scores_demo$data)
+```
+
+For observation \(i\) and component \(k\),
+
+\[
+t_{ik} = \sum_{j=1}^{p} x_{ij}v_{jk}.
+\]
+
+Scores tell us where observations lie after rotation into the PCA coordinate system.
+
+### 10.1 Plot scores without group information
+
+```r
+p_scores <- pca_plot(
+  fit,
+  type = "scores",
+  dims = c(1, 2)
+)
+
+p_scores
+```
+
+### 10.2 Add treatment only after PCA is fitted
+
+```r
+p_scores_grouped <- pca_plot(
+  fit,
+  type = "scores",
+  dims = c(1, 2),
+  group = meta$treatment
+)
+
+p_scores_grouped
+```
+
+The treatment factor is supplementary. It does not alter the PCA axes.
+
+### 10.3 Interpretation
+
+If treatments progress approximately along PC1, that pattern is consistent with the known treatment-linked latent structure in the teaching generator. However:
+
+- the PCA did not use treatment labels;
+- separation is descriptive unless a separate inferential framework is specified;
+- overlap does not mean treatments are statistically equal;
+- visible separation does not by itself constitute a test of treatment differences.
+
+---
+
+## 11. Loadings, correlations, contributions, cos², and communalities
+
+### 11.1 Raw loadings
+
+```r
+pca_table(fit, type = "loadings")
+
+pca_plot(
+  fit,
+  type = "loadings",
+  component = 1
+)
+```
+
+Raw eigenvector loadings define the component direction. In an orthonormal classical PCA loading vector,
+
+\[
+\sum_{j=1}^{p}v_{jk}^2 = 1.
+\]
+
+### 11.2 Correlation loadings
+
+For standardized correlation PCA,
+
+\[
+\operatorname{cor}(X_j,PC_k)
+= \sqrt{\lambda_k}\,v_{jk}.
+\]
+
+Inspect them visually:
+
+```r
+pca_plot(
+  fit,
+  type = "correlation_circle",
+  dims = c(1, 2)
+)
+```
+
+### 11.3 cos²: quality of representation
+
+`pcaLab` defines
+
+\[
+\cos^2_{jk}
+= \operatorname{cor}(X_j,PC_k)^2.
+\]
+
+```r
+pca_plot(
+  fit,
+  type = "cos2",
+  component = 1
+)
+```
+
+A high cos² means that a variable is well represented by that component. It does not mean that the variable dominates construction of the axis.
+
+### 11.4 Contribution: how strongly a variable builds an axis
+
+For an explicit linear loading vector, `pcaLab` uses normalized squared loading weights. Because the loading vector is unit length in ordinary orthogonal PCA, the contribution corresponds to the squared loading share.
+
+```r
+pca_plot(
+  fit,
+  type = "contributions",
+  component = 1
+)
+```
+
+The dashed reference in the plot is
+
+\[
+\frac{1}{p},
+\]
+
+which represents average contribution if all variables contributed equally.
+
+### 11.5 Variable summary table
+
+```r
+pc1_variables <- pca_table(
+  fit,
+  type = "variables",
+  component = 1
+)
+
+pc1_variables
+```
+
+### 11.6 Why a universal loading threshold is inadequate
+
+A rule such as `abs(loading) > 0.50` ignores:
+
+- the number of variables;
+- the component eigenvalue;
+- representation quality;
+- uncertainty;
+- multiple testing;
+- stability across bootstrap resamples;
+- near-degenerate eigenspaces.
+
+`pca_associate()` later combines several of these dimensions explicitly.
+
+---
+
+## 12. Biplots: useful, compact, and easy to over-interpret
+
+```r
+biplot_demo <- pca_teach_biplot(fit)
+biplot_demo$concept
+biplot_demo$steps
+```
+
+Publication figure:
+
+```r
+p_biplot <- pca_plot(
+  fit,
+  type = "biplot",
+  dims = c(1, 2)
+)
+
+p_biplot
+```
+
+A biplot overlays observation scores and variable directions. In this implementation, score coordinates are shown with loading or correlation-loading directions rescaled for display.
+
+### Interpretation rules
+
+1. Nearby observations are similar only in the retained PC plane.
+2. Long variable arrows indicate strong representation in the plotted plane, depending on the geometry used.
+3. Variables pointing in similar directions tend to have positive association in the displayed component space.
+4. Opposing directions indicate negative association.
+5. Near-right angles indicate weak linear association in the displayed space.
+6. Arrow length and angle should not be interpreted without knowing the scaling used.
+7. A two-dimensional biplot can hide important structure in PC3 or later components.
+
+---
+
+
+## 39. Project new observations without refitting
+
+Set aside a small test set before fitting:
+
+```r
+train_id <- seq_len(nrow(X)) <= 60
+
+fit_train <- pca_fit(
+  X[train_id, ],
+  method = "classical",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+
+new_scores <- predict(
+  fit_train,
+  newdata = X[!train_id, ],
+  ncomp = 3
+)
+
+head(new_scores)
+```
+
+Prediction applies the training preprocessing parameters and projects the new observations onto the fitted loading directions.
+
+### Interpretation
+
+Do not re-center or re-scale each new batch independently if the goal is projection into an existing PCA reference system. The new observations must use the training center and scale.
+
+---
+
+## 40. Supplementary observations and supplementary variables
+
+```r
+supp_vars <- cbind(
+  water_use_proxy = X$photosynthesis[train_id] / X$stomatal_conductance[train_id],
+  yield_biomass_ratio = X$yield[train_id] / X$biomass[train_id]
+)
+
+supp <- pca_supplementary(
+  fit_train,
+  observations = X[!train_id, ],
+  variables = supp_vars
+)
+
+supp$observation_scores
+supp$variable_correlations
+```
+
+Supplementary observations are projected into the existing PC space. Supplementary variables are correlated with existing scores after the PCA fit.
+
+They do not redefine the axes.
+
+---
+
+## 41. Group summaries remain supplementary
+
+Build treatment centroids and bootstrap centroid regions:
+
+```r
+grp <- pca_group(
+  fit,
+  group = meta$treatment,
+  dims = c(1, 2),
+  region = "bootstrap",
+  level = 0.95,
+  nboot = 999,
+  seed = 42
+)
+
+grp$centroids
+```
+
+Plot the regions:
+
+```r
+pca_plot(
+  fit,
+  type = "scores",
+  dims = c(1, 2),
+  group = meta$treatment,
+  group_region = grp
+)
+```
+
+Other region choices include:
+
+```r
+pca_group(fit, meta$treatment, region = "mean_chisq")
+pca_group(fit, meta$treatment, region = "data_chisq")
+pca_group(fit, meta$treatment, region = "circle_chisq")
+pca_group(fit, meta$treatment, region = "none")
+```
+
+### Interpretation
+
+Different regions answer different descriptive questions.
+
+- `data_chisq` describes dispersion of observations in score space.
+- `mean_chisq` scales the covariance toward uncertainty of the centroid mean.
+- `bootstrap` uses resampled centroids.
+- `circle_chisq` imposes isotropic geometry and is therefore a special-case display.
+
+A group region is not a substitute for a designed multivariate hypothesis test.
+
+---
+
+## Where to continue
+
+Continue to `03-dimension-inference-bootstrap-stability.Rmd` before making strong claims about the number or stability of retained components.
+
+## Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching data. They demonstrate workflow and interpretation, not empirical evidence. For stochastic procedures, set and report a seed. For optional engines, record backend versions with `sessionInfo()` and preserve the preprocessing specification used to create the fitted object.

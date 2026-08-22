@@ -1,0 +1,448 @@
+---
+title: "Difficult Observations: Diagnostics, ROBPCA, Cellwise PCA, Sparse PCA, and RPCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{PCA Diagnostics, Robustness, Sparsity, and RPCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Difficult Observations: Diagnostics, ROBPCA, Cellwise PCA, Sparse PCA, and RPCA
+
+**Package:** `pcaLab`  
+**Target version:** `0.1.0`  
+**Role in the vignette system:** Observation diagnostics and four distinct responses to difficult data: casewise robustness, cellwise robustness, sparse loading structures, and low-rank plus sparse decomposition.
+
+> This source is intentionally instructional. It is not precompiled here. Code that requires an optional backend is guarded in the examples or should be run only after `pca_capabilities()` confirms availability.
+
+## Learning objectives
+
+The reader will learn to:
+
+1. distinguish score distance, orthogonal distance, leverage, and reconstruction residuals;
+2. classify regular observations, good leverage points, orthogonal outliers, and bad leverage points;
+3. avoid treating every flagged point as a data error;
+4. use casewise ROBPCA when whole observations are contaminated;
+5. use cellwise methods when only selected measurements are corrupted;
+6. use sparse PCA for interpretability rather than pretending it is the same optimization problem as ordinary PCA;
+7. combine robustness and sparsity when both are scientifically justified;
+8. distinguish ROBPCA from Principal Component Pursuit / RPCA and interpret low-rank plus sparse decompositions correctly;
+9. compare subspaces rather than comparing arbitrary loading signs.
+
+## Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** Observation diagnostics and four distinct responses to difficult data: casewise robustness, cellwise robustness, sparse loading structures, and low-rank plus sparse decomposition.
+
+**Not developed here:** Missing-data imputation, probabilistic latent-variable models, generalized PCA, and compositional geometry are not repeated here.
+
+# Part V. Diagnostics and difficult observations
+
+## 19. Diagnose observations before calling them outliers
+
+PCA is sensitive to observations that are extreme in the component space, poorly reconstructed by the retained subspace, or both.
+
+`pca_diagnose()` reports:
+
+- score distance;
+- orthogonal distance;
+- leverage;
+- score-distance cutoff when a defensible Euclidean reference exists;
+- orthogonal-distance cutoff;
+- observation-level flags.
+
+```r
+diag <- pca_diagnose(
+  fit,
+  level = 0.975
+)
+
+head(diag)
+subset(diag, outlier_flag)
+```
+
+Publication figure:
+
+```r
+p_diag <- pca_plot(
+  fit,
+  type = "diagnostics"
+)
+
+p_diag
+```
+
+### 19.1 Score distance
+
+Score distance asks whether an observation is extreme within the retained component space.
+
+Conceptually, for an ordinary PCA with component variances \(\lambda_k\),
+
+\[
+SD_i^2
+= \sum_{k=1}^{K}
+\frac{t_{ik}^2}{\lambda_k}.
+\]
+
+### 19.2 Orthogonal distance
+
+Orthogonal distance measures how far an observation lies from its low-rank reconstruction:
+
+\[
+OD_i
+= \left\|\mathbf x_i - \widehat{\mathbf x}_{i,K}\right\|.
+\]
+
+### 19.3 Four useful diagnostic categories
+
+| Score distance | Orthogonal distance | Interpretation |
+|---|---|---|
+| low | low | regular observation well represented by retained PCs |
+| high | low | extreme within the modeled PC space, but still well represented |
+| low | high | poorly reconstructed observation that does not follow the dominant structure |
+| high | high | extreme and poorly represented; investigate carefully |
+
+### 19.4 What not to do
+
+Do not automatically remove a flagged observation.
+
+Instead:
+
+1. verify data entry and measurement provenance;
+2. identify whether the point belongs to a legitimate treatment, environment, genotype, or rare biological state;
+3. determine whether the problem is casewise or cellwise;
+4. compare classical and appropriate robust analyses;
+5. report sensitivity if the scientific conclusion changes.
+
+---
+
+# Part VI. Robust, sparse, and low-rank alternatives
+
+## 20. Casewise robust PCA: whole observations are contaminated
+
+Create a known-contamination simulation:
+
+```r
+sim_case <- pca_simulate(
+  n = 180,
+  p = 10,
+  rank = 3,
+  noise = 0.35,
+  casewise = 0.08,
+  seed = 1001
+)
+
+length(sim_case$casewise_outliers)
+sim_case$casewise_outliers
+```
+
+Fit ordinary PCA:
+
+```r
+fit_case_classic <- pca_fit(
+  sim_case$data,
+  method = "classical",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+```
+
+Fit ROBPCA when `rospca` is available:
+
+```r
+if (requireNamespace("rospca", quietly = TRUE)) {
+  fit_case_robust <- pca_fit(
+    sim_case$data,
+    method = "robust",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3,
+    alpha = 0.75
+  )
+
+  fit_case_robust
+  pca_plot(fit_case_robust, type = "diagnostics")
+}
+```
+
+### 20.1 Compare the recovered subspaces
+
+```r
+if (exists("fit_case_robust")) {
+  cmp_case <- pca_compare(
+    list(
+      classical = fit_case_classic,
+      robust = fit_case_robust
+    ),
+    ncomp = 3
+  )
+
+  cmp_case$metrics
+  cmp_case$subspace_angles
+}
+```
+
+### Interpretation
+
+Casewise robust PCA is appropriate when whole rows can be atypical. It should not be described simply as "PCA after deleting outliers." The robust fit estimates the dominant subspace using procedures designed to resist contamination.
+
+A material difference between classical and robust subspaces is evidence that the ordinary PCA geometry is sensitive to a subset of observations. The next step is scientific investigation of those observations, not automatic exclusion.
+
+---
+
+## 21. Cellwise robust PCA: only some measurements are corrupted
+
+In high-dimensional laboratory or sensor data, a row can be mostly valid while one or two cells are contaminated.
+
+```r
+sim_cell <- pca_simulate(
+  n = 160,
+  p = 18,
+  rank = 3,
+  noise = 0.30,
+  cellwise = 0.03,
+  seed = 1002
+)
+
+head(sim_cell$cellwise_outliers)
+```
+
+If `cellWise` is installed:
+
+```r
+if (requireNamespace("cellWise", quietly = TRUE)) {
+  fit_cell <- pca_fit(
+    sim_cell$data,
+    method = "cellwise",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3
+  )
+
+  fit_cell
+  pca_plot(fit_cell, type = "diagnostics")
+}
+```
+
+### Interpretation
+
+Casewise ROBPCA and MacroPCA answer different contamination problems.
+
+If only a few spectral channels, chemical assays, or sensor readings are corrupted, classifying the entire plot or plant as an outlier can discard valid information. A cellwise method can preserve usable measurements while reducing the influence of contaminated cells.
+
+---
+
+## 22. Sparse PCA: simplify the loading structure
+
+Ordinary PCs typically involve every measured variable. In metabolomics, spectroscopy, genomics, soil chemistry, or high-dimensional phenotyping, that can make interpretation difficult.
+
+Simulate a moderate-dimensional problem:
+
+```r
+sim_sparse <- pca_simulate(
+  n = 220,
+  p = 30,
+  rank = 3,
+  noise = 0.40,
+  seed = 1003
+)
+```
+
+Classical reference:
+
+```r
+fit_sparse_ref <- pca_fit(
+  sim_sparse$data,
+  method = "classical",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+```
+
+Sparse PCA with `sparsepca`:
+
+```r
+if (requireNamespace("sparsepca", quietly = TRUE)) {
+  fit_sparse <- pca_fit(
+    sim_sparse$data,
+    method = "sparse",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3,
+    backend = "sparsepca",
+    alpha = 1e-4,
+    beta = 1e-4
+  )
+
+  fit_sparse$extra$sparsity
+  pca_plot(fit_sparse, type = "loadings", component = 1)
+}
+```
+
+Alternative `elasticnet` backend:
+
+```r
+if (requireNamespace("elasticnet", quietly = TRUE)) {
+  fit_sparse_en <- pca_fit(
+    sim_sparse$data,
+    method = "sparse",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3,
+    backend = "elasticnet",
+    cardinality = c(8, 8, 8)
+  )
+}
+```
+
+### Interpretation
+
+Sparse PCA deliberately trades some fidelity for simpler loading structure. It can make a component easier to explain, but sparsity itself does not guarantee that the retained variables are scientifically important or statistically stable.
+
+Compare:
+
+- reconstruction error;
+- loading sparsity;
+- subspace orientation;
+- bootstrap stability where a faithful refit is available;
+- scientific interpretability.
+
+---
+
+## 23. Robust sparse PCA: interpretability under contamination
+
+When both contamination and dense loading structure are problems, robust sparse PCA can combine resistance and sparsity.
+
+```r
+sim_rs <- pca_simulate(
+  n = 200,
+  p = 25,
+  rank = 3,
+  noise = 0.35,
+  casewise = 0.05,
+  seed = 1004
+)
+```
+
+```r
+if (requireNamespace("rospca", quietly = TRUE)) {
+  fit_rs <- pca_fit(
+    sim_rs$data,
+    method = "robust_sparse",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3,
+    backend = "rospca",
+    lambda = 0.20,
+    alpha = 0.75
+  )
+
+  pca_plot(fit_rs, type = "loadings", component = 1)
+}
+```
+
+### Interpretation
+
+A sparse robust loading vector can be easier to communicate, but its zeros are method-dependent regularized estimates. Do not interpret an exact zero as proof that a variable has no biological relationship with the latent process.
+
+---
+
+## 24. RPCA/PCP: low-rank signal plus sparse corruption
+
+`pcaLab` separates Principal Component Pursuit from casewise ROBPCA.
+
+The decomposition is
+
+\[
+\mathbf X
+= \mathbf L + \mathbf S + \mathbf E,
+\]
+
+where:
+
+- \(\mathbf L\) is low rank;
+- \(\mathbf S\) is sparse corruption;
+- \(\mathbf E\) represents any remaining small residual error conceptually.
+
+The internal implementation estimates a low-rank and sparse decomposition through an inexact augmented-Lagrangian style algorithm.
+
+```r
+sim_rpca <- pca_simulate(
+  n = 160,
+  p = 24,
+  rank = 3,
+  noise = 0.10,
+  cellwise = 0.04,
+  seed = 1005
+)
+
+fit_rpca <- pca_fit(
+  sim_rpca$data,
+  method = "rpca",
+  center = TRUE,
+  scale = FALSE,
+  ncomp = 3
+)
+
+fit_rpca$extra$converged
+fit_rpca$extra$iterations
+fit_rpca$extra$relative_residual
+```
+
+Inspect the low-rank and sparse matrices:
+
+```r
+L <- fit_rpca$extra$low_rank
+S <- fit_rpca$extra$sparse
+
+dim(L)
+dim(S)
+
+mean(abs(S) > 1e-8)
+```
+
+### Interpretation
+
+RPCA/PCP is not merely a "more robust PCA." It assumes a specific decomposition of the observed matrix into low-rank signal and sparse additive corruption. Use it when that matrix model is scientifically plausible.
+
+---
+
+
+## 60. Using ROBPCA for cellwise corruption
+
+Casewise and cellwise contamination are different problems.
+
+Use:
+
+```r
+pca_fit(method = "robust")
+pca_fit(method = "cellwise")
+```
+
+according to the contamination mechanism.
+
+---
+
+## 61. Calling RPCA/PCP and ROBPCA the same method
+
+They solve different mathematical problems.
+
+```r
+pca_fit(method = "rpca")
+pca_fit(method = "robust")
+```
+
+The first decomposes a matrix into low-rank and sparse parts. The second estimates a resistant principal subspace under rowwise contamination.
+
+---
+
+## Where to continue
+
+Continue to `05-missing-probabilistic-high-dimensional.Rmd` if incompleteness or `p >> n` is the primary challenge.
+
+## Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching data. They demonstrate workflow and interpretation, not empirical evidence. For stochastic procedures, set and report a seed. For optional engines, record backend versions with `sessionInfo()` and preserve the preprocessing specification used to create the fitted object.

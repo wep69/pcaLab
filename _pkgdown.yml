@@ -1,0 +1,15 @@
+template:
+  bootstrap: 5
+reference:
+- title: Core PCA
+  contents: [pca_fit, pca_preprocess, pca_reconstruct, pca_doctor, pca_capabilities]
+- title: Dimensionality and inference
+  contents: [pca_ncomp, pca_parallel, pca_cv, pca_broken_stick, pca_test, pca_boot, pca_stability, pca_associate]
+- title: Diagnostics and comparison
+  contents: [pca_diagnose, pca_compare, pca_supplementary, pca_group]
+- title: Graphics, tours, and reporting
+  contents: [pca_plot, pca_export_plot, pca_theme_publication, pca_tour, pca_tour_compare, pca_table, pca_export_table, pca_report]
+- title: Structured PCA
+  contents: [pca_asca, pca_multiblock, pca_incremental_init, pca_incremental_update, pca_incremental_finalize]
+- title: Teaching
+  contents: [starts_with("pca_teach")]

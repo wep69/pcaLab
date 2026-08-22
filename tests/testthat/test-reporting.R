@@ -1,0 +1,10 @@
+test_that("tables and markdown reports are generated", {
+  f <- pca_fit(iris[,1:4],scale=TRUE,ncomp=3)
+  expect_true(is.data.frame(pca_table(f,"eigenvalues")))
+  tf <- tempfile(fileext=".md")
+  pca_export_table(pca_table(f,"eigenvalues"),tf)
+  expect_true(file.exists(tf))
+  rf <- tempfile(fileext=".md")
+  pca_report(f,rf)
+  expect_true(file.exists(rf))
+})

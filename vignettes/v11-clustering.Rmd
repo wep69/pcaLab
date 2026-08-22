@@ -1,0 +1,247 @@
+---
+title: "Clustering on PCA Scores"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Clustering on PCA Scores}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+## 1. Why this tutorial exists
+
+PCA reduces high-dimensional data to a small number of principal components. Once the most informative low-dimensional representation is available, clustering on those scores reveals structure that variable-level clustering might obscure.
+
+The central rule is simple:
+
+**Decide the clustering method, the number of clusters, and the degree of stability before interpreting individual groups.**
+
+This tutorial follows that rule from a basic PCA through k-selection, multiple-method comparison, bootstrap stability assessment, cluster boundary computation, custom labelling, and a structured summary.
+
+---
+
+## 2. Learning objectives
+
+After working through this tutorial, the reader should be able to:
+
+1. extract PCA scores and decide how many components to keep;
+2. evaluate the number of clusters using silhouette, Calinski-Harabasz, gap statistic, and WSS;
+3. compare k-means, PAM, hierarchical clustering, and MCLUST at a fixed k;
+4. perform bootstrap resampling to build a consensus matrix and measure membership stability;
+5. compute cluster boundaries using Mahalanobis ellipses, convex hulls, or SVM decision surfaces;
+6. generate observation, mean, group, and external custom labels for PCA score plots;
+7. produce a compact structured report that integrates evaluation, stability, and silhouette;
+8. recognize when cluster boundaries are fragile and report that fact clearly.
+
+---
+
+## 3. Package map: clustering functions in pcaLab
+
+| Function | Instructional role | Key arguments |
+|---|---|---|
+| `pca_cluster_evaluate()` | Evaluate multiple k values across multiple indices | method, k_range, B, dims |
+| `pca_cluster()` | Cluster observations using one method at a chosen k | method, k, dims, nstart |
+| `pca_cluster_compare()` | Compare multiple methods at the same k | methods, k, dims |
+| `pca_cluster_stability()` | Bootstrap resampling for consensus matrix and membership stability | method, k, nboot, dims, seed |
+| `pca_cluster_boundary()` | Compute Mahalanobis, convex-hull, or SVM boundaries | method, level, dims |
+| `pca_cluster_labels()` | Generate observation, mean, group, or external labels | type, labels, dims |
+| `pca_cluster_report()` | Compact multi-part summary integrating all components | method, k_range, dims |
+
+The progression is deliberate. The evaluation panel decides k; the comparison panel decides which method; the stability panel documents how confident the assignment is; the boundary and label panels prepare the final figure; the report brings everything together.
+
+Every function accepts either a `pca_fit` object or a raw numeric matrix. All optional backends (cluster, mclust, dbscan, e1071) are guarded with `requireNamespace()`; missing packages produce informative errors.
+
+---
+
+## 4. The dataset: Fisher's iris measurements
+
+The iris dataset contains 150 observations of 4 morphological measurements from 3 species of iris.
+
+| Species | n | Sepal.Length | Sepal.Width | Petal.Length | Petal.Width |
+|:--------|--:|-----------:|-----------:|-----------:|-----------:|
+| setosa | 50 | 5.01 | 3.43 | 1.46 | 0.25 |
+| versicolor | 50 | 5.94 | 2.77 | 4.26 | 1.33 |
+| virginica | 50 | 6.59 | 2.97 | 5.55 | 2.03 |
+
+The three species form visually distinct clusters in the first two PCA dimensions -- a good starting point for method comparison. For a more challenging case, add noise or reduce sample size.
+
+---
+
+## 5. Step 1: Fit PCA and select the number of components
+
+```{r}
+library(pcaLab)
+fit <- pca_fit(iris[, 1:4], center = TRUE, scale = TRUE, ncomp = 4)
+summary(fit)
+fit$variance_explained[1:2]
+```
+
+The first two components capture over 95% of the total standardized variance. The `dims` argument in every clustering function lets us use any subset.
+
+### 5.1 How many PCs to retain?
+
+```{r}
+sel <- pca_ncomp(fit, methods = c("parallel", "cv"), nperm = 49, seed = 1)
+sel$recommendations
+```
+
+Parallel analysis and cross-validation both suggest 2 components -- consistent with the clear two-dimensional scatter in the score plot.
+
+---
+
+## 6. Step 2: Evaluate the number of clusters
+
+`pca_cluster_evaluate()` computes WSS, silhouette, Calinski-Harabasz, and the gap statistic for each candidate k.
+
+```{r}
+ev <- pca_cluster_evaluate(iris[, 1:4], method = "kmeans", k_range = 2:6, B = 499)
+ev
+```
+
+**Interpretation caution:** The gap statistic and silhouette sometimes disagree. Disagreement is informative, not a failure. Report both values and explain why you chose a particular k.
+
+---
+
+## 7. Step 3: Cluster the data
+
+`pca_cluster()` accepts any supported method and returns a structured object that all downstream functions can consume.
+
+```{r}
+cl <- pca_cluster(iris[, 1:4], method = "kmeans", k = 3, dims = 1:2)
+cl
+```
+
+Available methods: kmeans (base R, fast spherical), pam (cluster, robust), hclust (base R, hierarchical), mclust (model-based), dbscan (density-based).
+
+Restrict to a subspace of principal components:
+
+```{r}
+cl2 <- pca_cluster(iris[, 1:4], method = "kmeans", k = 3, dims = 1:3)
+table(cl2$cluster, iris$Species)
+```
+
+---
+
+## 8. Step 4: Compare clustering methods
+
+`pca_cluster_compare()` runs each method and returns a table of internal validation indices plus the adjusted Rand index between every pair.
+
+```{r}
+cmp <- pca_cluster_compare(iris[, 1:4], methods = c("kmeans", "pam", "hclust"), k = 3)
+cmp
+```
+
+The Rand index measures how much two clusterings agree beyond chance. A value close to 1 means near-perfect agreement; near 0 means random overlap.
+
+---
+
+## 9. Step 5: Assess bootstrap stability
+
+`pca_cluster_stability()` draws nboot bootstrap samples, clusters each sample, and constructs a consensus matrix.
+
+```{r}
+st <- pca_cluster_stability(iris[, 1:4], method = "kmeans", k = 3, nboot = 199, seed = 1)
+st
+```
+
+| Diagnostic | Good range | Meaning |
+|---|---|---|
+| mean stability | > 0.85 | Most observations are consistently assigned |
+| cophenetic correlation | > 0.75 | Consensus distances resemble original distances |
+| mean silhouette | > 0.50 | Average separation between clusters |
+
+If mean stability is below 0.70, the cluster boundaries are fragile. This is not a reason to hide the fact -- it is a scientific finding about the data.
+
+---
+
+## 10. Step 6: Compute cluster boundaries
+
+`pca_cluster_boundary()` computes one of several options.
+
+**Mahalanobis confidence ellipse (default):**
+
+```{r}
+bd <- pca_cluster_boundary(iris[, 1:4], cl$cluster, method = "ellipse", level = 0.95)
+nrow(bd$boundaries)
+```
+
+**Convex hull:**
+
+```{r}
+bd_hull <- pca_cluster_boundary(iris[, 1:4], cl$cluster, method = "convex")
+nrow(bd_hull$boundaries)
+```
+
+**SVM decision surface (requires e1071):**
+
+```{r}
+if (requireNamespace("e1071", quietly = TRUE)) {
+  bd_svm <- pca_cluster_boundary(iris[, 1:4], cl$cluster, method = "svm")
+  nrow(bd_svm$boundaries)
+}
+```
+
+---
+
+## 11. Step 7: Generate observation labels
+
+`pca_cluster_labels()` provides four modes: group, mean, observation, and external.
+
+```{r}
+head(pca_cluster_labels(iris[, 1:4], cl$cluster, type = "group"), 10)
+head(pca_cluster_labels(iris[, 1:4], cl$cluster, type = "mean"), 3)
+head(pca_cluster_labels(iris[, 1:4], cl$cluster, type = "observation"), 5)
+ext_lab <- c(rep("Setosa", 50), rep("Vers", 50), rep("Virgin", 50))
+head(pca_cluster_labels(iris[, 1:4], cl$cluster, type = "external", labels = ext_lab), 5)
+```
+
+---
+
+## 12. Step 8: Generate the full report
+
+`pca_cluster_report()` gathers evaluation, stability, silhouette, and cluster sizes into a single printable summary.
+
+```{r}
+rpt <- pca_cluster_report(iris[, 1:4], method = "kmeans", k_range = 2:3)
+print(rpt)
+```
+
+---
+
+## 13. Interpretation safeguards
+
+1. **PCA orientation is arbitrary.** Cluster boundaries depend on which PCs you keep.
+2. **Stability is not validation.** High bootstrap stability does not prove that groups exist in the population.
+3. **Silhouette and CH are relative indices.** They rank candidate k values, not absolute quality.
+4. **Boundaries are visual aids.** Report the method and level, not just the figure.
+5. **Labels are descriptive.** A cluster name based on external biology is a hypothesis, not a conclusion.
+
+---
+
+## 14. Putting it all together
+
+```{r}
+fit <- pca_fit(iris[, 1:4], center = TRUE, scale = TRUE)
+ev <- pca_cluster_evaluate(fit, k_range = 2:5, B = 499)
+cl <- pca_cluster(fit, method = "kmeans", k = ev$best_k, dims = 1:2)
+st <- pca_cluster_stability(fit, method = "kmeans", k = ev$best_k, nboot = 199, seed = 1)
+bd <- pca_cluster_boundary(fit, cl$cluster, method = "ellipse", level = 0.95)
+lb <- pca_cluster_labels(fit, cl$cluster, type = "group")
+rpt <- pca_cluster_report(fit, clustering = cl$cluster, k_range = 2:3)
+cat(sprintf("k = %d | mean silhouette = %.3f | stability = %.3f | PVE = %.1f%%\n",
+            cl$k, mean(cl$silhouette_per_obs, na.rm = TRUE),
+            st$mean_stability, sum(fit$variance_explained[1:2]) * 100))
+```
+
+---
+
+## 15. Notes
+
+- All clustering functions accept either a pca_fit object or a raw numeric matrix.
+- Optional engines (cluster, mclust, dbscan, e1071) are guarded with requireNamespace().
+- The dims argument lets you restrict clustering to a chosen subspace.
+- Bootstrap cluster stability is not a substitute for replicate study design.

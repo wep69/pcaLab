@@ -1,0 +1,601 @@
+---
+title: "Beyond Ordinary Euclidean PCA: Kernel, Nonlinear, Logistic, GLM, Compositional, Functional, Dynamic, and Multilevel PCA"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Nonlinear, Generalized, and Special-Geometry PCA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Beyond Ordinary Euclidean PCA: Kernel, Nonlinear, Logistic, GLM, Compositional, Functional, Dynamic, and Multilevel PCA
+
+**Package:** `pcaLab`  
+**Target version:** `0.1.0`  
+**Role in the vignette system:** Methods required when the structure is curved, the response is discrete, the variables are compositional, observations are functions, time ordering matters, or repeated measurements mix within- and between-unit variation.
+
+> This source is intentionally instructional. It is not precompiled here. Code that requires an optional backend is guarded in the examples or should be run only after `pca_capabilities()` confirms availability.
+
+## Learning objectives
+
+The reader will learn to:
+
+1. recognize when linear covariance PCA is inadequate;
+2. fit and interpret kernel PCA without pretending kernel axes have ordinary-variable PVE semantics;
+3. understand the role and limitations of inverse nonlinear PCA;
+4. use logistic PCA for binary matrices;
+5. use GLM-PCA for count-like exponential-family data;
+6. use log-ratio geometry for compositional data and handle zeros explicitly;
+7. treat curves as functional observations with FPCA;
+8. represent lagged multivariate processes with dynamic PCA;
+9. separate within-unit and between-unit covariance with multilevel PCA;
+10. avoid transferring ordinary-Gaussian PCA diagnostics and rank rules to incompatible geometries.
+
+## Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** Methods required when the structure is curved, the response is discrete, the variables are compositional, observations are functions, time ordering matters, or repeated measurements mix within- and between-unit variation.
+
+**Not developed here:** Designed multivariate experiments, multiblock integration, and streaming updates are handled in `07-structured-experimental-streaming-pca.Rmd`.
+
+# Part IX. Nonlinear and generalized component methods
+
+## 28. Kernel PCA: when the important structure is curved
+
+Create a nonlinear simulation:
+
+```r
+sim_nonlin <- pca_simulate(
+  n = 220,
+  p = 8,
+  rank = 2,
+  noise = 0.25,
+  nonlinear = TRUE,
+  seed = 4001
+)
+
+Xnl <- sim_nonlin$data
+```
+
+Classical PCA:
+
+```r
+fit_nl_linear <- pca_fit(
+  Xnl,
+  method = "classical",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+
+pca_plot(fit_nl_linear, type = "scores")
+```
+
+RBF kernel PCA:
+
+```r
+fit_kpca <- pca_fit(
+  Xnl,
+  method = "kernel",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3,
+  kernel = "rbf"
+)
+
+pca_plot(
+  fit_kpca,
+  type = "scores",
+  dims = c(1, 2)
+)
+```
+
+Polynomial kernel:
+
+```r
+fit_kpoly <- pca_fit(
+  Xnl,
+  method = "kernel",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3,
+  kernel = "poly",
+  degree = 2
+)
+```
+
+### Interpretation
+
+Kernel PCA searches for linear structure in an implicit feature space, which becomes nonlinear structure in the original measurement space.
+
+Do not interpret kernel components using ordinary original-variable loading arrows unless the engine explicitly defines an appropriate pre-image or variable map. `pcaLab` therefore blocks ordinary loading interpretations when they are not defined.
+
+For kernel PCA, ordinary Gaussian covariance-PCA explained-variance rules should also be used only when the engine exposes a valid corresponding quantity.
+
+---
+
+## 29. Inverse nonlinear PCA
+
+When `pcaMethods` is available:
+
+```r
+if (requireNamespace("pcaMethods", quietly = TRUE)) {
+  fit_nlpca <- pca_fit(
+    Xnl,
+    method = "nlpca",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 2
+  )
+
+  fit_nlpca
+}
+```
+
+### Interpretation
+
+Nonlinear PCA is not one uniquely defined method. Different algorithms optimize different objectives. When reporting an NLPCA result, always state the backend and optimization model rather than simply writing "nonlinear PCA was used."
+
+---
+
+## 30. Logistic PCA for binary agronomic indicators
+
+Suppose each plot is scored for presence or absence of 12 symptoms or morphological states.
+
+```r
+set.seed(4002)
+n_bin <- 120
+latent_bin <- rnorm(n_bin)
+
+prob_bin <- sapply(
+  seq_len(12),
+  function(j) {
+    plogis(
+      -0.5 +
+      runif(1, -1.2, 1.2) * latent_bin +
+      rnorm(n_bin, sd = 0.15)
+    )
+  }
+)
+
+Xbin <- matrix(
+  rbinom(n_bin * 12, 1, as.vector(prob_bin)),
+  nrow = n_bin,
+  ncol = 12
+)
+
+colnames(Xbin) <- paste0("symptom_", seq_len(12))
+```
+
+Fit logistic PCA:
+
+```r
+if (requireNamespace("logisticPCA", quietly = TRUE)) {
+  fit_logistic <- pca_fit(
+    Xbin,
+    method = "logistic",
+    ncomp = 2,
+    m = 4
+  )
+
+  fit_logistic
+  pca_plot(fit_logistic, type = "scores")
+}
+```
+
+Engine-specific rank selection:
+
+```r
+if (exists("fit_logistic")) {
+  select_logistic <- pca_ncomp(
+    fit_logistic,
+    methods = "engine_cv",
+    cv_folds = 5,
+    seed = 4002
+  )
+
+  select_logistic$recommendations
+}
+```
+
+### Interpretation
+
+Logistic PCA minimizes binomial-deviance-type loss in natural-parameter geometry. The score variances stored for convenience must not be interpreted as ordinary Gaussian PCA explained variance.
+
+This is why `pcaLab` uses engine-specific validation instead of automatically applying Kaiser, broken-stick, or Marchenko-Pastur rules to logistic PCA.
+
+---
+
+## 31. GLM-PCA for count-like multivariate data
+
+Generate non-negative counts representing, for example, insect taxa sampled from plots:
+
+```r
+set.seed(4003)
+n_count <- 100
+p_count <- 16
+z_count <- rnorm(n_count)
+
+eta <- outer(z_count, seq(-0.8, 0.8, length.out = p_count))
+eta <- sweep(eta, 2, runif(p_count, 0.5, 2.0), "+")
+mu <- exp(eta)
+
+Xcount <- matrix(
+  rpois(n_count * p_count, lambda = as.vector(mu)),
+  nrow = n_count,
+  ncol = p_count
+)
+
+colnames(Xcount) <- paste0("taxon_", seq_len(p_count))
+```
+
+Poisson GLM-PCA:
+
+```r
+if (requireNamespace("glmpca", quietly = TRUE)) {
+  fit_glmpca <- pca_fit(
+    Xcount,
+    method = "glmpca",
+    ncomp = 2,
+    fam = "poi"
+  )
+
+  fit_glmpca
+  pca_plot(fit_glmpca, type = "scores")
+}
+```
+
+### Interpretation
+
+GLM-PCA works in exponential-family likelihood/deviance geometry. Ordinary Gaussian PCA eigenvalue thresholds are not automatically valid.
+
+For candidate ranks, use likelihood, deviance, predictive validation, or method-specific criteria supported by the backend.
+
+---
+
+# Part X. Data geometries that require specialized PCA
+
+## 32. Compositional PCA: fractions are not ordinary Euclidean variables
+
+Suppose a plant tissue sample is partitioned among six nutrient or biochemical fractions that form a composition.
+
+```r
+set.seed(5001)
+comp_raw <- matrix(
+  rgamma(90 * 6, shape = rep(c(3, 4, 5, 2, 3, 4), each = 90)),
+  nrow = 90,
+  ncol = 6
+)
+
+comp <- comp_raw / rowSums(comp_raw)
+colnames(comp) <- c("N", "P", "K", "Ca", "Mg", "other")
+
+head(comp)
+rowSums(comp)[1:5]
+```
+
+ILR PCA:
+
+```r
+fit_comp <- pca_fit(
+  comp,
+  method = "compositional",
+  coordinate = "ilr",
+  center = TRUE,
+  scale = FALSE,
+  ncomp = 3
+)
+
+fit_comp
+pca_plot(fit_comp, type = "scores")
+```
+
+Inspect part-level loading representation:
+
+```r
+fit_comp$extra$part_loadings
+```
+
+CLR alternative:
+
+```r
+fit_comp_clr <- pca_fit(
+  comp,
+  method = "compositional",
+  coordinate = "clr",
+  center = TRUE,
+  scale = FALSE,
+  ncomp = 3
+)
+```
+
+### 32.1 Zeros require explicit treatment
+
+```r
+comp_zero <- comp
+comp_zero[1, 1] <- 0
+
+# This will fail unless a pseudocount is supplied.
+try(
+  pca_fit(
+    comp_zero,
+    method = "compositional",
+    coordinate = "ilr"
+  )
+)
+```
+
+If a pseudocount has a scientific justification:
+
+```r
+fit_comp_pc <- pca_fit(
+  comp_zero,
+  method = "compositional",
+  coordinate = "ilr",
+  pseudocount = 1e-4,
+  ncomp = 3
+)
+```
+
+### Interpretation
+
+Compositions carry relative information. Increasing one part necessarily changes the relative shares of the others. Log-ratio coordinates respect that geometry better than direct Euclidean PCA of raw percentages.
+
+The pseudocount is part of the statistical model and must be reported.
+
+---
+
+## 33. Functional PCA for spectral or growth curves
+
+Construct smooth reflectance-like curves over wavelengths:
+
+```r
+set.seed(5002)
+n_curve <- 70
+wave <- seq(450, 900, length.out = 120)
+
+curve_mat <- t(
+  vapply(
+    seq_len(n_curve),
+    function(i) {
+      a1 <- rnorm(1, 0.30, 0.04)
+      a2 <- rnorm(1, 0.18, 0.03)
+      base <- 0.15 + 0.00025 * (wave - 450)
+      peak1 <- a1 * exp(-0.5 * ((wave - 550) / 35)^2)
+      peak2 <- a2 * exp(-0.5 * ((wave - 720) / 55)^2)
+      base + peak1 - peak2 + rnorm(length(wave), sd = 0.008)
+    },
+    numeric(length(wave))
+  )
+)
+
+colnames(curve_mat) <- paste0("wl_", round(wave))
+rownames(curve_mat) <- paste0("plot_", seq_len(n_curve))
+```
+
+Dense-grid FPCA:
+
+```r
+fit_fpca <- pca_fit(
+  curve_mat,
+  method = "functional",
+  grid = wave,
+  smooth = TRUE,
+  ncomp = 4
+)
+
+fit_fpca
+```
+
+Plot eigenfunctions:
+
+```r
+pca_plot(
+  fit_fpca,
+  type = "eigenfunctions"
+)
+```
+
+Scores:
+
+```r
+pca_plot(
+  fit_fpca,
+  type = "scores",
+  dims = c(1, 2)
+)
+```
+
+### Interpretation
+
+Functional PCA treats each row as a curve rather than treating every wavelength as an unrelated variable. The eigenfunctions describe dominant modes of curve variation over the functional domain.
+
+Inspect where an eigenfunction is positive or negative over wavelength, but remember that the entire eigenfunction can be multiplied by -1 without changing the component.
+
+---
+
+## 34. Dynamic PCA for lagged multivariate processes
+
+Generate a daily environmental-physiology series:
+
+```r
+set.seed(5003)
+ntime <- 240
+tt <- seq_len(ntime)
+
+Xtime <- cbind(
+  temperature = 24 + 4 * sin(2 * pi * tt / 30) + rnorm(ntime, 0, 0.8),
+  vapor_deficit = 1.4 + 0.5 * sin(2 * pi * (tt - 2) / 30) + rnorm(ntime, 0, 0.12),
+  soil_moisture = 0.28 - 0.04 * sin(2 * pi * (tt - 6) / 30) + rnorm(ntime, 0, 0.015),
+  photosynthesis = 18 + 2.0 * sin(2 * pi * (tt - 1) / 30) + rnorm(ntime, 0, 0.7)
+)
+```
+
+Dynamic PCA with lags 1, 2, and 3:
+
+```r
+fit_dyn <- pca_fit(
+  Xtime,
+  method = "dynamic",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 4,
+  lags = 1:3,
+  include_current = TRUE
+)
+
+fit_dyn
+```
+
+Plot score trajectory:
+
+```r
+pca_plot(
+  fit_dyn,
+  type = "trajectory",
+  dims = c(1, 2)
+)
+```
+
+Inspect lagged loadings:
+
+```r
+pca_table(
+  fit_dyn,
+  type = "loadings"
+)
+```
+
+### Interpretation
+
+A dynamic PCA component can combine current and lagged variables. For example, a component may reflect high current temperature together with high previous-day vapor deficit and delayed photosynthetic response.
+
+Do not interpret lagged loadings as causal effects. They describe covariance structure in a lag-embedded matrix.
+
+---
+
+## 35. Multilevel PCA for repeated observations
+
+Suppose 30 plants are measured on four occasions for five physiological variables.
+
+```r
+set.seed(5004)
+subject <- factor(rep(paste0("plant_", 1:30), each = 4))
+time_ml <- rep(0:3, times = 30)
+
+between <- rnorm(30, 0, 1)
+between_rep <- rep(between, each = 4)
+within <- scale(time_ml)[, 1] + rnorm(length(time_ml), 0, 0.4)
+
+Xml <- cbind(
+  height = 100 + 10 * between_rep + 6 * within + rnorm(120, 0, 2),
+  leaf_area = 35 + 4 * between_rep + 5 * within + rnorm(120, 0, 1.5),
+  chlorophyll = 42 + 3 * between_rep - 2 * within + rnorm(120, 0, 1),
+  photosynthesis = 18 + 2 * between_rep + 1.8 * within + rnorm(120, 0, 0.8),
+  conductance = 0.35 + 0.03 * between_rep - 0.04 * within + rnorm(120, 0, 0.015)
+)
+```
+
+Within-subject PCA:
+
+```r
+fit_within <- pca_fit(
+  Xml,
+  method = "multilevel",
+  subject = subject,
+  level = "within",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+```
+
+Between-subject PCA:
+
+```r
+fit_between <- pca_fit(
+  Xml,
+  method = "multilevel",
+  subject = subject,
+  level = "between",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+```
+
+Compare loadings:
+
+```r
+pca_table(fit_within, type = "loadings")
+pca_table(fit_between, type = "loadings")
+```
+
+### Interpretation
+
+A variable relationship can differ between levels.
+
+For example, plants that are taller on average may also have greater mean leaf area between subjects, while within a given plant the short-term change in chlorophyll may oppose the time trend in leaf area.
+
+Ordinary PCA on all rows mixes those two covariance sources.
+
+---
+
+
+## 62. Using ordinary PCA on binary or count matrices without thinking about geometry
+
+Consider:
+
+```r
+pca_fit(method = "logistic")
+pca_fit(method = "glmpca")
+```
+
+Do not automatically transfer Gaussian eigenvalue rules to generalized PCA.
+
+---
+
+## 63. Using ordinary PCA directly on compositions
+
+Use:
+
+```r
+pca_fit(method = "compositional")
+```
+
+and report the log-ratio coordinate system and any zero replacement.
+
+---
+
+## 64. Treating time-lagged observations as independent columns without documenting the lag embedding
+
+Use:
+
+```r
+pca_fit(method = "dynamic")
+```
+
+and report `lags`, `include_current`, scaling, and the interpretation of lagged variables.
+
+---
+
+## 65. Mixing within-subject and between-subject covariance
+
+Use:
+
+```r
+pca_fit(method = "multilevel", level = "within")
+pca_fit(method = "multilevel", level = "between")
+```
+
+when repeated measures create distinct covariance levels.
+
+---
+
+## Where to continue
+
+Continue to `07-structured-experimental-streaming-pca.Rmd` for ASCA, multiblock integration, and incremental PCA.
+
+## Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching data. They demonstrate workflow and interpretation, not empirical evidence. For stochastic procedures, set and report a seed. For optional engines, record backend versions with `sessionInfo()` and preserve the preprocessing specification used to create the fitted object.

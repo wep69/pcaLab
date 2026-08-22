@@ -1,0 +1,12 @@
+^pcaLab_.*[.]zip$
+^pcaLab_.*[.]tar[.]gz$
+^IMPLEMENTATION_AUDIT[.]md$
+^LOCAL_VALIDATION[.]md$
+^CRAN_SUBMISSION_CHECKLIST[.]md$
+^\.github$
+^doc$
+^Meta$
+^IMPLEMENTATION_MATRIX[.]md$
+^STATE_OF_ART[.]md$
+^_pkgdown[.]yml$
+^LICENSE$
