@@ -1,0 +1,20 @@
+pandoc: '3.9'
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  v00-start-here-integrated-workflow: v00-start-here-integrated-workflow.html
+  v01-foundations-eigen-svd-and-reconstruction: v01-foundations-eigen-svd-and-reconstruction.html
+  v02-classical-preprocessing-interpretation: v02-classical-preprocessing-interpretation.html
+  v03-dimension-inference-bootstrap-stability: v03-dimension-inference-bootstrap-stability.html
+  v04-diagnostics-robust-sparse-rpca: v04-diagnostics-robust-sparse-rpca.html
+  v05-missing-probabilistic-high-dimensional: v05-missing-probabilistic-high-dimensional.html
+  v06-nonlinear-generalized-special-geometries: v06-nonlinear-generalized-special-geometries.html
+  v07-structured-experimental-streaming-pca: v07-structured-experimental-streaming-pca.html
+  v08-tours-publication-reporting: v08-tours-publication-reporting.html
+  v09-method-choice-limitations-validation: v09-method-choice-limitations-validation.html
+  v10-teaching-lab-course-sequence: v10-teaching-lab-course-sequence.html
+  v11-clustering: v11-clustering.html
+last_built: 2026-08-22T05:44Z
+urls:
+  reference: https://wep69.github.io/pcaLab/reference
+  article: https://wep69.github.io/pcaLab/articles
