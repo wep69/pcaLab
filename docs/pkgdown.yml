@@ -1,4 +1,4 @@
-pandoc: '3.9'
+pandoc: '3.10'
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
@@ -14,7 +14,7 @@ articles:
   v09-method-choice-limitations-validation: v09-method-choice-limitations-validation.html
   v10-teaching-lab-course-sequence: v10-teaching-lab-course-sequence.html
   v11-clustering: v11-clustering.html
-last_built: 2026-08-22T05:44Z
+last_built: 2026-08-22T08:19Z
 urls:
   reference: https://wep69.github.io/pcaLab/reference
   article: https://wep69.github.io/pcaLab/articles

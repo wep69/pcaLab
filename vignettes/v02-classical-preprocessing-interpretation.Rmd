@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Classical PCA in Practice: Preprocessing, Scores, Loadings, Biplots, Prediction, and Supplementary Information
 
 **Package:** `pcaLab`  
@@ -42,7 +48,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 ### 8.1 Start with the agronomy example
 
-```r
+```{r, eval=FALSE}
 ex <- pca_example_agronomy(seed = 42)
 X <- ex$data
 meta <- ex$metadata
@@ -53,7 +59,7 @@ head(meta)
 
 ### 8.2 Run the PCA doctor
 
-```r
+```{r, eval=FALSE}
 doc <- pca_doctor(
   X,
   scale = TRUE,
@@ -75,7 +81,7 @@ doc$suggestions
 
 ### 8.3 Audit variable scales and missingness
 
-```r
+```{r, eval=FALSE}
 prep <- pca_preprocess(
   X,
   center = TRUE,
@@ -101,7 +107,7 @@ The preprocessing audit includes:
 
 The package supports:
 
-```r
+```{r, eval=FALSE}
 pca_preprocess(X, scale = FALSE)
 pca_preprocess(X, scale = TRUE)
 pca_preprocess(X, scale = "uv")
@@ -112,7 +118,7 @@ pca_preprocess(X, scale = "vast")
 
 Use the teaching comparison:
 
-```r
+```{r, eval=FALSE}
 scale_demo <- pca_teach_scaling(X)
 scale_demo$concept
 scale_demo$steps
@@ -126,7 +132,7 @@ Neither choice is universally correct.
 
 For appropriate non-negative or strongly skewed data:
 
-```r
+```{r, eval=FALSE}
 # Positive count-like or concentration-like measurements.
 Xp <- abs(X) + 1
 
@@ -153,7 +159,7 @@ Weighted PCA is appropriate when observation weights arise from design, precisio
 
 Create a simple precision-weight example in which the first six plots are assigned lower precision:
 
-```r
+```{r, eval=FALSE}
 w <- rep(1, nrow(X))
 w[1:6] <- 0.50
 
@@ -171,7 +177,7 @@ fit_weighted
 
 Variable weights can also be supplied when the scientific analysis requires a weighted variable metric:
 
-```r
+```{r, eval=FALSE}
 vw <- rep(1, ncol(X))
 names(vw) <- colnames(X)
 vw["yield"] <- 1.5
@@ -195,7 +201,7 @@ fit_weighted_var <- pca_fit(
 
 ### 9.1 Fit the full meaningful rank first
 
-```r
+```{r, eval=FALSE}
 fit <- pca_fit(
   X,
   method = "classical",
@@ -209,7 +215,7 @@ summary(fit)
 
 The object stores a common set of fields whenever the engine supports them:
 
-```r
+```{r, eval=FALSE}
 names(fit)
 ```
 
@@ -231,20 +237,20 @@ Key fields include:
 
 ### 9.2 Inspect the eigenspectrum
 
-```r
+```{r, eval=FALSE}
 pca_table(fit, type = "eigenvalues")
 ```
 
 Publication-ready scree plot:
 
-```r
+```{r, eval=FALSE}
 p_scree <- pca_plot(fit, type = "scree")
 p_scree
 ```
 
 Cumulative variance:
 
-```r
+```{r, eval=FALSE}
 p_cum <- pca_plot(fit, type = "cumulative")
 p_cum
 ```
@@ -263,7 +269,7 @@ When interpreting the local result, verify this expectation from the actual load
 
 Use the teaching object:
 
-```r
+```{r, eval=FALSE}
 scores_demo <- pca_teach_scores(fit)
 scores_demo$concept
 head(scores_demo$data)
@@ -279,7 +285,7 @@ Scores tell us where observations lie after rotation into the PCA coordinate sys
 
 ### 10.1 Plot scores without group information
 
-```r
+```{r, eval=FALSE}
 p_scores <- pca_plot(
   fit,
   type = "scores",
@@ -291,7 +297,7 @@ p_scores
 
 ### 10.2 Add treatment only after PCA is fitted
 
-```r
+```{r, eval=FALSE}
 p_scores_grouped <- pca_plot(
   fit,
   type = "scores",
@@ -319,7 +325,7 @@ If treatments progress approximately along PC1, that pattern is consistent with 
 
 ### 11.1 Raw loadings
 
-```r
+```{r, eval=FALSE}
 pca_table(fit, type = "loadings")
 
 pca_plot(
@@ -346,7 +352,7 @@ For standardized correlation PCA,
 
 Inspect them visually:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "correlation_circle",
@@ -363,7 +369,7 @@ pca_plot(
 = \operatorname{cor}(X_j,PC_k)^2.
 \]
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "cos2",
@@ -377,7 +383,7 @@ A high cos² means that a variable is well represented by that component. It doe
 
 For an explicit linear loading vector, `pcaLab` uses normalized squared loading weights. Because the loading vector is unit length in ordinary orthogonal PCA, the contribution corresponds to the squared loading share.
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "contributions",
@@ -395,7 +401,7 @@ which represents average contribution if all variables contributed equally.
 
 ### 11.5 Variable summary table
 
-```r
+```{r, eval=FALSE}
 pc1_variables <- pca_table(
   fit,
   type = "variables",
@@ -423,7 +429,7 @@ A rule such as `abs(loading) > 0.50` ignores:
 
 ## 12. Biplots: useful, compact, and easy to over-interpret
 
-```r
+```{r, eval=FALSE}
 biplot_demo <- pca_teach_biplot(fit)
 biplot_demo$concept
 biplot_demo$steps
@@ -431,7 +437,7 @@ biplot_demo$steps
 
 Publication figure:
 
-```r
+```{r, eval=FALSE}
 p_biplot <- pca_plot(
   fit,
   type = "biplot",
@@ -460,7 +466,7 @@ A biplot overlays observation scores and variable directions. In this implementa
 
 Set aside a small test set before fitting:
 
-```r
+```{r, eval=FALSE}
 train_id <- seq_len(nrow(X)) <= 60
 
 fit_train <- pca_fit(
@@ -490,7 +496,7 @@ Do not re-center or re-scale each new batch independently if the goal is project
 
 ## 40. Supplementary observations and supplementary variables
 
-```r
+```{r, eval=FALSE}
 supp_vars <- cbind(
   water_use_proxy = X$photosynthesis[train_id] / X$stomatal_conductance[train_id],
   yield_biomass_ratio = X$yield[train_id] / X$biomass[train_id]
@@ -516,7 +522,7 @@ They do not redefine the axes.
 
 Build treatment centroids and bootstrap centroid regions:
 
-```r
+```{r, eval=FALSE}
 grp <- pca_group(
   fit,
   group = meta$treatment,
@@ -532,7 +538,7 @@ grp$centroids
 
 Plot the regions:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "scores",
@@ -544,7 +550,7 @@ pca_plot(
 
 Other region choices include:
 
-```r
+```{r, eval=FALSE}
 pca_group(fit, meta$treatment, region = "mean_chisq")
 pca_group(fit, meta$treatment, region = "data_chisq")
 pca_group(fit, meta$treatment, region = "circle_chisq")

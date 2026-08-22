@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Start Here: An Integrated pcaLab Workflow from Data Audit to Scientific Reporting
 
 **Package:** `pcaLab`  
@@ -147,7 +153,7 @@ The progression is deliberate. The existence of an advanced engine is not a reas
 
 ### 3.2 Inspect the package programmatically
 
-```r
+```{r, eval=FALSE}
 library(pcaLab)
 
 # Which PCA engines are available on this computer?
@@ -170,7 +176,7 @@ A useful first rule is:
 
 The package provides two core synthetic generators:
 
-```r
+```{r, eval=FALSE}
 # Agronomy-oriented multivariate example.
 ex <- pca_example_agronomy(seed = 42)
 str(ex$data)
@@ -234,7 +240,7 @@ This is the recommended first analysis for a new user.
 
 ### Step 1. Load data and metadata
 
-```r
+```{r, eval=FALSE}
 library(pcaLab)
 
 ex <- pca_example_agronomy(seed = 42)
@@ -244,7 +250,7 @@ meta <- ex$metadata
 
 ### Step 2. Audit the data
 
-```r
+```{r, eval=FALSE}
 doc <- pca_doctor(
   X,
   scale = TRUE
@@ -256,14 +262,14 @@ doc$suggestions
 
 ### Step 3. Compare scaling choices
 
-```r
+```{r, eval=FALSE}
 scaling <- pca_teach_scaling(X)
 scaling$steps
 ```
 
 ### Step 4. Fit a centered standardized classical PCA
 
-```r
+```{r, eval=FALSE}
 fit <- pca_fit(
   X,
   method = "classical",
@@ -274,7 +280,7 @@ fit <- pca_fit(
 
 ### Step 5. Inspect the spectrum
 
-```r
+```{r, eval=FALSE}
 pca_table(fit, "eigenvalues")
 pca_plot(fit, "scree")
 pca_plot(fit, "cumulative")
@@ -282,7 +288,7 @@ pca_plot(fit, "cumulative")
 
 ### Step 6. Select dimensionality
 
-```r
+```{r, eval=FALSE}
 selection <- pca_ncomp(
   fit,
   methods = "all",
@@ -297,7 +303,7 @@ selection$consensus
 
 ### Step 7. Inspect scores and groups descriptively
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "scores",
@@ -307,7 +313,7 @@ pca_plot(
 
 ### Step 8. Inspect variable interpretation
 
-```r
+```{r, eval=FALSE}
 pca_plot(fit, "correlation_circle")
 pca_plot(fit, "contributions", component = 1)
 pca_plot(fit, "cos2", component = 1)
@@ -316,7 +322,7 @@ pca_table(fit, "variables", component = 1)
 
 ### Step 9. Test whether the standardized PCA structure exceeds a permutation null
 
-```r
+```{r, eval=FALSE}
 ptest <- pca_test(
   fit,
   nperm = 999,
@@ -326,7 +332,7 @@ ptest <- pca_test(
 
 ### Step 10. Bootstrap uncertainty
 
-```r
+```{r, eval=FALSE}
 boot <- pca_boot(
   fit,
   nboot = 1999,
@@ -336,7 +342,7 @@ boot <- pca_boot(
 
 ### Step 11. Evaluate subspace stability
 
-```r
+```{r, eval=FALSE}
 stab <- pca_stability(
   fit,
   nboot = 999,
@@ -348,7 +354,7 @@ stab$summary
 
 ### Step 12. Build variable associations
 
-```r
+```{r, eval=FALSE}
 assoc <- pca_associate(
   fit,
   test = ptest,
@@ -360,7 +366,7 @@ subset(assoc, combined_association)
 
 ### Step 13. Diagnose observations
 
-```r
+```{r, eval=FALSE}
 diag <- pca_diagnose(fit)
 subset(diag, outlier_flag)
 
@@ -369,7 +375,7 @@ pca_plot(fit, "diagnostics")
 
 ### Step 14. Add treatment centroids and bootstrap regions
 
-```r
+```{r, eval=FALSE}
 grp <- pca_group(
   fit,
   meta$treatment,
@@ -388,7 +394,7 @@ pca_plot(
 
 ### Step 15. Export the main outputs
 
-```r
+```{r, eval=FALSE}
 pca_export_plot(
   pca_plot(fit, "scree"),
   "Figure_1_scree.pdf"
@@ -407,7 +413,7 @@ pca_export_table(
 
 ### Step 16. Create a reproducible report
 
-```r
+```{r, eval=FALSE}
 pca_report(
   fit,
   "agronomy_pca_report.md",
@@ -442,7 +448,7 @@ A concise scientific interpretation should report:
 
 ### Stage A. Simulate a difficult matrix
 
-```r
+```{r, eval=FALSE}
 hard <- pca_simulate(
   n = 220,
   p = 30,
@@ -459,7 +465,7 @@ Xhard <- hard$data
 
 ### Stage B. Audit
 
-```r
+```{r, eval=FALSE}
 pca_doctor(
   Xhard,
   scale = TRUE
@@ -468,7 +474,7 @@ pca_doctor(
 
 ### Stage C. Classical reference
 
-```r
+```{r, eval=FALSE}
 m_classical <- pca_fit(
   Xhard,
   method = "classical",
@@ -480,7 +486,7 @@ m_classical <- pca_fit(
 
 ### Stage D. Casewise robust alternative
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("rospca", quietly = TRUE)) {
   m_robust <- pca_fit(
     Xhard,
@@ -494,7 +500,7 @@ if (requireNamespace("rospca", quietly = TRUE)) {
 
 ### Stage E. Cellwise alternative
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("cellWise", quietly = TRUE)) {
   m_cellwise <- pca_fit(
     Xhard,
@@ -508,7 +514,7 @@ if (requireNamespace("cellWise", quietly = TRUE)) {
 
 ### Stage F. Sparse alternative
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("sparsepca", quietly = TRUE)) {
   m_sparse <- pca_fit(
     Xhard,
@@ -522,7 +528,7 @@ if (requireNamespace("sparsepca", quietly = TRUE)) {
 
 ### Stage G. Low-rank plus sparse decomposition
 
-```r
+```{r, eval=FALSE}
 m_rpca <- pca_fit(
   Xhard,
   method = "rpca",
@@ -534,7 +540,7 @@ m_rpca <- pca_fit(
 
 ### Stage H. Compare only defensible common metrics
 
-```r
+```{r, eval=FALSE}
 mods <- list(classical = m_classical, rpca = m_rpca)
 
 if (exists("m_robust")) mods$robust <- m_robust
@@ -570,7 +576,7 @@ Frame this as a sensitivity study, not a contest:
 
 ### Stage A. Generate a high-dimensional nonlinear problem
 
-```r
+```{r, eval=FALSE}
 hdnl <- pca_simulate(
   n = 100,
   p = 300,
@@ -586,7 +592,7 @@ Xhdnl <- hdnl$data
 
 ### Stage B. Diagnose geometry
 
-```r
+```{r, eval=FALSE}
 pca_doctor(
   Xhdnl,
   scale = TRUE,
@@ -596,7 +602,7 @@ pca_doctor(
 
 ### Stage C. Randomized linear PCA
 
-```r
+```{r, eval=FALSE}
 hd_linear <- pca_fit(
   Xhdnl,
   method = "randomized",
@@ -609,7 +615,7 @@ hd_linear <- pca_fit(
 
 ### Stage D. Select linear rank using appropriate evidence
 
-```r
+```{r, eval=FALSE}
 hd_sel <- pca_ncomp(
   pca_fit(Xhdnl, method = "classical", center = TRUE, scale = TRUE),
   methods = c("scree", "parallel", "rmt", "cv"),
@@ -622,7 +628,7 @@ hd_sel$recommendations
 
 ### Stage E. Fit kernel PCA to test nonlinear structure
 
-```r
+```{r, eval=FALSE}
 hd_kernel <- pca_fit(
   Xhdnl,
   method = "kernel",
@@ -635,7 +641,7 @@ hd_kernel <- pca_fit(
 
 ### Stage F. Compare visual structure rather than forcing one metric
 
-```r
+```{r, eval=FALSE}
 pca_plot(hd_linear, type = "scores")
 pca_plot(hd_kernel, type = "scores")
 ```
@@ -800,11 +806,11 @@ The current package namespace exports the following user-facing functions.
 
 S3 methods also provide:
 
-```r
+```{r, eval=FALSE}
 print(fit)
 summary(fit)
 plot(fit)
-predict(fit, newdata = ...)
+predict(fit, newdata = new_data)
 fitted(fit)
 residuals(fit)
 ```
@@ -818,7 +824,7 @@ residuals(fit)
 
 The following script is intentionally compact. It is suitable as the first file a new user creates after installing `pcaLab`.
 
-```r
+```{r, eval=FALSE}
 library(pcaLab)
 
 # 1. Check available engines.
@@ -976,13 +982,13 @@ The following short examples are intended as syntax reminders. Each should be us
 
 ## Classical
 
-```r
+```{r, eval=FALSE}
 pca_fit(X, method = "classical", center = TRUE, scale = TRUE)
 ```
 
 ## Weighted
 
-```r
+```{r, eval=FALSE}
 w <- rep(1, nrow(X))
 w[1:5] <- 0.5
 
@@ -997,7 +1003,7 @@ pca_fit(
 
 ## NIPALS
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xmiss,
   method = "nipals",
@@ -1009,7 +1015,7 @@ pca_fit(
 
 ## EM-style PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xmiss,
   method = "em",
@@ -1021,7 +1027,7 @@ pca_fit(
 
 ## PPCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   X,
   method = "ppca",
@@ -1033,7 +1039,7 @@ pca_fit(
 
 ## Bayesian PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("pcaMethods", quietly = TRUE)) {
   pca_fit(
     Xmiss,
@@ -1047,7 +1053,7 @@ if (requireNamespace("pcaMethods", quietly = TRUE)) {
 
 ## ROBPCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("rospca", quietly = TRUE)) {
   pca_fit(
     sim_case$data,
@@ -1061,7 +1067,7 @@ if (requireNamespace("rospca", quietly = TRUE)) {
 
 ## Cellwise MacroPCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("cellWise", quietly = TRUE)) {
   pca_fit(
     sim_cell$data,
@@ -1075,7 +1081,7 @@ if (requireNamespace("cellWise", quietly = TRUE)) {
 
 ## Sparse PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("sparsepca", quietly = TRUE)) {
   pca_fit(
     sim_sparse$data,
@@ -1090,7 +1096,7 @@ if (requireNamespace("sparsepca", quietly = TRUE)) {
 
 ## Robust sparse PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("rospca", quietly = TRUE)) {
   pca_fit(
     sim_rs$data,
@@ -1104,7 +1110,7 @@ if (requireNamespace("rospca", quietly = TRUE)) {
 
 ## RPCA/PCP
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   sim_rpca$data,
   method = "rpca",
@@ -1116,7 +1122,7 @@ pca_fit(
 
 ## Kernel PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xnl,
   method = "kernel",
@@ -1129,7 +1135,7 @@ pca_fit(
 
 ## NLPCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("pcaMethods", quietly = TRUE)) {
   pca_fit(
     Xnl,
@@ -1143,7 +1149,7 @@ if (requireNamespace("pcaMethods", quietly = TRUE)) {
 
 ## Shrinkage PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("corpcor", quietly = TRUE)) {
   pca_fit(
     Xspec,
@@ -1157,7 +1163,7 @@ if (requireNamespace("corpcor", quietly = TRUE)) {
 
 ## Logistic PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("logisticPCA", quietly = TRUE)) {
   pca_fit(
     Xbin,
@@ -1169,7 +1175,7 @@ if (requireNamespace("logisticPCA", quietly = TRUE)) {
 
 ## GLM-PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("glmpca", quietly = TRUE)) {
   pca_fit(
     Xcount,
@@ -1182,7 +1188,7 @@ if (requireNamespace("glmpca", quietly = TRUE)) {
 
 ## Compositional PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   comp,
   method = "compositional",
@@ -1193,7 +1199,7 @@ pca_fit(
 
 ## Functional PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   curve_mat,
   method = "functional",
@@ -1205,7 +1211,7 @@ pca_fit(
 
 ## Dynamic PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xtime,
   method = "dynamic",
@@ -1218,7 +1224,7 @@ pca_fit(
 
 ## Multilevel PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xml,
   method = "multilevel",
@@ -1232,7 +1238,7 @@ pca_fit(
 
 ## Multiblock PCA
 
-```r
+```{r, eval=FALSE}
 pca_multiblock(
   list(
     soil = soil,
@@ -1248,7 +1254,7 @@ pca_multiblock(
 
 ## Randomized PCA
 
-```r
+```{r, eval=FALSE}
 pca_fit(
   Xspec,
   method = "randomized",
@@ -1261,7 +1267,7 @@ pca_fit(
 
 ## Incremental PCA
 
-```r
+```{r, eval=FALSE}
 state <- pca_incremental_init(
   p = ncol(Xstream),
   center = TRUE,

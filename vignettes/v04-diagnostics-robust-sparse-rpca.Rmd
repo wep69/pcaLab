@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Difficult Observations: Diagnostics, ROBPCA, Cellwise PCA, Sparse PCA, and RPCA
 
 **Package:** `pcaLab`  
@@ -52,7 +58,7 @@ PCA is sensitive to observations that are extreme in the component space, poorly
 - orthogonal-distance cutoff;
 - observation-level flags.
 
-```r
+```{r, eval=FALSE}
 diag <- pca_diagnose(
   fit,
   level = 0.975
@@ -64,7 +70,7 @@ subset(diag, outlier_flag)
 
 Publication figure:
 
-```r
+```{r, eval=FALSE}
 p_diag <- pca_plot(
   fit,
   type = "diagnostics"
@@ -123,7 +129,7 @@ Instead:
 
 Create a known-contamination simulation:
 
-```r
+```{r, eval=FALSE}
 sim_case <- pca_simulate(
   n = 180,
   p = 10,
@@ -139,7 +145,7 @@ sim_case$casewise_outliers
 
 Fit ordinary PCA:
 
-```r
+```{r, eval=FALSE}
 fit_case_classic <- pca_fit(
   sim_case$data,
   method = "classical",
@@ -151,7 +157,7 @@ fit_case_classic <- pca_fit(
 
 Fit ROBPCA when `rospca` is available:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("rospca", quietly = TRUE)) {
   fit_case_robust <- pca_fit(
     sim_case$data,
@@ -169,7 +175,7 @@ if (requireNamespace("rospca", quietly = TRUE)) {
 
 ### 20.1 Compare the recovered subspaces
 
-```r
+```{r, eval=FALSE}
 if (exists("fit_case_robust")) {
   cmp_case <- pca_compare(
     list(
@@ -196,7 +202,7 @@ A material difference between classical and robust subspaces is evidence that th
 
 In high-dimensional laboratory or sensor data, a row can be mostly valid while one or two cells are contaminated.
 
-```r
+```{r, eval=FALSE}
 sim_cell <- pca_simulate(
   n = 160,
   p = 18,
@@ -211,7 +217,7 @@ head(sim_cell$cellwise_outliers)
 
 If `cellWise` is installed:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("cellWise", quietly = TRUE)) {
   fit_cell <- pca_fit(
     sim_cell$data,
@@ -240,7 +246,7 @@ Ordinary PCs typically involve every measured variable. In metabolomics, spectro
 
 Simulate a moderate-dimensional problem:
 
-```r
+```{r, eval=FALSE}
 sim_sparse <- pca_simulate(
   n = 220,
   p = 30,
@@ -252,7 +258,7 @@ sim_sparse <- pca_simulate(
 
 Classical reference:
 
-```r
+```{r, eval=FALSE}
 fit_sparse_ref <- pca_fit(
   sim_sparse$data,
   method = "classical",
@@ -264,7 +270,7 @@ fit_sparse_ref <- pca_fit(
 
 Sparse PCA with `sparsepca`:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("sparsepca", quietly = TRUE)) {
   fit_sparse <- pca_fit(
     sim_sparse$data,
@@ -284,7 +290,7 @@ if (requireNamespace("sparsepca", quietly = TRUE)) {
 
 Alternative `elasticnet` backend:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("elasticnet", quietly = TRUE)) {
   fit_sparse_en <- pca_fit(
     sim_sparse$data,
@@ -316,7 +322,7 @@ Compare:
 
 When both contamination and dense loading structure are problems, robust sparse PCA can combine resistance and sparsity.
 
-```r
+```{r, eval=FALSE}
 sim_rs <- pca_simulate(
   n = 200,
   p = 25,
@@ -327,7 +333,7 @@ sim_rs <- pca_simulate(
 )
 ```
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("rospca", quietly = TRUE)) {
   fit_rs <- pca_fit(
     sim_rs$data,
@@ -369,7 +375,7 @@ where:
 
 The internal implementation estimates a low-rank and sparse decomposition through an inexact augmented-Lagrangian style algorithm.
 
-```r
+```{r, eval=FALSE}
 sim_rpca <- pca_simulate(
   n = 160,
   p = 24,
@@ -394,7 +400,7 @@ fit_rpca$extra$relative_residual
 
 Inspect the low-rank and sparse matrices:
 
-```r
+```{r, eval=FALSE}
 L <- fit_rpca$extra$low_rank
 S <- fit_rpca$extra$sparse
 
@@ -417,7 +423,7 @@ Casewise and cellwise contamination are different problems.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "robust")
 pca_fit(method = "cellwise")
 ```
@@ -430,7 +436,7 @@ according to the contamination mechanism.
 
 They solve different mathematical problems.
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "rpca")
 pca_fit(method = "robust")
 ```

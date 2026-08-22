@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Structured PCA: ASCA, Multiblock Integration, and Incremental Workflows
 
 **Package:** `pcaLab`  
@@ -43,7 +49,7 @@ PCA is unsupervised. When the scientific question concerns designed treatment ef
 
 Create a two-factor agronomic design:
 
-```r
+```{r, eval=FALSE}
 set.seed(6001)
 design <- expand.grid(
   cultivar = factor(c("C1", "C2", "C3")),
@@ -71,7 +77,7 @@ Yasca <- cbind(
 
 Fit ASCA with permutation testing:
 
-```r
+```{r, eval=FALSE}
 asca <- pca_asca(
   data = Yasca,
   formula = ~ cultivar * nitrogen + block,
@@ -89,7 +95,7 @@ asca$effect_p
 
 Inspect the PCA of the nitrogen effect matrix:
 
-```r
+```{r, eval=FALSE}
 nitrogen_asca_pca <- asca$pca[["nitrogen"]]
 
 pca_plot(
@@ -113,7 +119,7 @@ The permutation test is performed at the term level using a reduced-model residu
 
 Suppose every plot has three measurement blocks.
 
-```r
+```{r, eval=FALSE}
 set.seed(6002)
 n_block <- 90
 latent_block <- rnorm(n_block)
@@ -140,7 +146,7 @@ spectral_block <- cbind(
 
 Fit block-scaled consensus PCA:
 
-```r
+```{r, eval=FALSE}
 fit_mb <- pca_multiblock(
   blocks = list(
     soil = soil,
@@ -160,7 +166,7 @@ fit_mb$extra$block_contributions
 
 Visualize consensus scores:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit_mb,
   type = "scores",
@@ -180,7 +186,7 @@ Report the chosen block-scaling rule because it changes the scientific weighting
 
 When all rows cannot be held or processed at once, the package can accumulate means and cross-products batch by batch.
 
-```r
+```{r, eval=FALSE}
 set.seed(6003)
 stream_sim <- pca_simulate(
   n = 1000,
@@ -195,7 +201,7 @@ Xstream <- stream_sim$data
 
 Initialize:
 
-```r
+```{r, eval=FALSE}
 state <- pca_incremental_init(
   p = ncol(Xstream),
   center = TRUE,
@@ -205,7 +211,7 @@ state <- pca_incremental_init(
 
 Update in batches:
 
-```r
+```{r, eval=FALSE}
 batch_id <- split(
   seq_len(nrow(Xstream)),
   ceiling(seq_len(nrow(Xstream)) / 100)
@@ -221,7 +227,7 @@ for (ii in batch_id) {
 
 Finalize:
 
-```r
+```{r, eval=FALSE}
 fit_inc <- pca_incremental_finalize(
   state,
   ncomp = 5
@@ -237,7 +243,7 @@ The incremental state stores aggregated covariance information, not the historic
 
 ### Validation against full PCA
 
-```r
+```{r, eval=FALSE}
 fit_full_stream <- pca_fit(
   Xstream,
   method = "classical",

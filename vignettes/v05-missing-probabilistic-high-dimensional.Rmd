@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Incomplete and High-Dimensional Data: NIPALS, EM, PPCA, Bayesian, Shrinkage, and Randomized PCA
 
 **Package:** `pcaLab`  
@@ -42,7 +48,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 Create a teaching matrix with approximately 8% missing cells:
 
-```r
+```{r, eval=FALSE}
 set.seed(2001)
 Xmiss <- as.matrix(X)
 idx_miss <- sample.int(
@@ -56,7 +62,7 @@ mean(is.na(Xmiss))
 
 Run the diagnostic:
 
-```r
+```{r, eval=FALSE}
 pca_doctor(
   Xmiss,
   scale = TRUE
@@ -65,7 +71,7 @@ pca_doctor(
 
 ### 25.1 NIPALS
 
-```r
+```{r, eval=FALSE}
 fit_nipals <- pca_fit(
   Xmiss,
   method = "nipals",
@@ -79,7 +85,7 @@ fit_nipals
 
 ### 25.2 EM-style PCA
 
-```r
+```{r, eval=FALSE}
 fit_em <- pca_fit(
   Xmiss,
   method = "em",
@@ -93,7 +99,7 @@ fit_em
 
 ### 25.3 Probabilistic PCA
 
-```r
+```{r, eval=FALSE}
 fit_ppca <- pca_fit(
   Xmiss,
   method = "ppca",
@@ -107,7 +113,7 @@ fit_ppca
 
 ### 25.4 Bayesian PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("pcaMethods", quietly = TRUE)) {
   fit_bpca <- pca_fit(
     Xmiss,
@@ -123,7 +129,7 @@ if (requireNamespace("pcaMethods", quietly = TRUE)) {
 
 ### 25.5 Compare common outputs carefully
 
-```r
+```{r, eval=FALSE}
 fits_missing <- list(
   nipals = fit_nipals,
   em = fit_em,
@@ -173,7 +179,7 @@ with
 \boldsymbol\varepsilon_i \sim N(0,\sigma^2\mathbf I).
 \]
 
-```r
+```{r, eval=FALSE}
 fit_ppca_complete <- pca_fit(
   X,
   method = "ppca",
@@ -205,7 +211,7 @@ The isotropic residual model is restrictive. Strong heteroscedasticity, heavy ta
 
 Simulate 80 observations measured at 400 spectral variables:
 
-```r
+```{r, eval=FALSE}
 spectral <- pca_simulate(
   n = 80,
   p = 400,
@@ -223,7 +229,7 @@ The maximum number of nonzero centered PCs is 79, not 400.
 
 ### 27.1 Randomized PCA
 
-```r
+```{r, eval=FALSE}
 fit_rand <- pca_fit(
   Xspec,
   method = "randomized",
@@ -241,7 +247,7 @@ If `irlba` is installed, `backend = "auto"` may use it. Otherwise an internal ra
 
 ### 27.2 Shrinkage PCA
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("corpcor", quietly = TRUE)) {
   fit_shrink <- pca_fit(
     Xspec,
@@ -259,7 +265,7 @@ if (requireNamespace("corpcor", quietly = TRUE)) {
 
 For a centered UV-scaled classical reference:
 
-```r
+```{r, eval=FALSE}
 fit_spec_classic <- pca_fit(
   Xspec,
   method = "classical",

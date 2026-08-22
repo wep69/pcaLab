@@ -7,6 +7,13 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+fit <- pca_fit(iris[, 1:4], center = TRUE, scale = TRUE)
+```
+
+
 # PCA Foundations: Rotation, Eigenvalues, Eigenvectors, SVD, and Reconstruction
 
 **Package:** `pcaLab`  
@@ -44,7 +51,7 @@ The attached teaching strategy that motivated this package starts from a powerfu
 
 ### 5.1 Rotate three simple observations
 
-```r
+```{r, eval=FALSE}
 rot <- pca_teach_rotation(angle = 45)
 rot$title
 rot$concept
@@ -68,7 +75,7 @@ The transformed coordinates are weighted linear combinations of the original var
 
 ### 5.2 Verify that rotation preserves distance
 
-```r
+```{r, eval=FALSE}
 X0 <- rot$data$original
 X1 <- rot$data$rotated
 
@@ -82,7 +89,7 @@ max(abs(as.matrix(dist(X0)) - as.matrix(dist(X1))))
 
 ### 5.3 Search for the direction of maximum variance
 
-```r
+```{r, eval=FALSE}
 var_demo <- pca_teach_variance(
   angles = seq(0, 180, by = 1)
 )
@@ -93,7 +100,7 @@ var_demo$steps
 
 A publication-style plot can be constructed from the returned teaching data:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   p_var <- ggplot2::ggplot(
     var_demo$data,
@@ -180,7 +187,7 @@ The first principal loading vector is the eigenvector associated with the larges
 
 ### 6.3 Inspect the calculation directly
 
-```r
+```{r, eval=FALSE}
 eig_demo <- pca_teach_eigen(scale = FALSE)
 
 eig_demo$data$covariance
@@ -269,7 +276,7 @@ contains the loading directions, and
 
 Use the package teaching function:
 
-```r
+```{r, eval=FALSE}
 svd_demo <- pca_teach_svd(
   data = pca_example_agronomy(seed = 42)$data,
   scale = TRUE
@@ -319,14 +326,14 @@ The residual matrix is
 
 ### 13.1 Teaching reconstruction error
 
-```r
+```{r, eval=FALSE}
 rec_demo <- pca_teach_reconstruction(fit)
 rec_demo$data
 ```
 
 ### 13.2 Reconstruct with selected numbers of components
 
-```r
+```{r, eval=FALSE}
 Xhat1 <- pca_reconstruct(
   fit,
   ncomp = 1,
@@ -344,7 +351,7 @@ head(Xhat2)
 
 ### 13.3 Reconstruction figure
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "reconstruction"
@@ -371,10 +378,10 @@ The appropriate rank balances:
 
 Use:
 
-```r
-pca_preprocess()
-pca_teach_scaling()
-pca_doctor()
+```{r, eval=FALSE}
+pca_preprocess(iris[, 1:4])
+pca_teach_scaling(iris[, 1:4])
+pca_doctor(iris[, 1:4])
 ```
 
 Unit-variance scaling is often sensible when variables are measured in different units, but it changes the scientific weighting of the variables.
@@ -385,7 +392,7 @@ Unit-variance scaling is often sensible when variables are measured in different
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_teach_variance()
 pca_teach_eigen()
 pca_teach_svd()
@@ -409,7 +416,7 @@ for ordinary linear PCA, and
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_boot()
 pca_stability()
 ```

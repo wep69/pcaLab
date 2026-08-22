@@ -1,0 +1,628 @@
+# How Many Components? Dimensionality, Permutation Inference, Bootstrap, and Stability
+
+## How Many Components? Dimensionality, Permutation Inference, Bootstrap, and Stability
+
+**Package:** `pcaLab`\
+**Target version:** `0.1.0`\
+**Role in the vignette system:** Component retention and uncertainty,
+integrating descriptive, null-reference, cross-validation,
+probabilistic, bootstrap, and subspace evidence.
+
+> This source is intentionally instructional. It is not precompiled
+> here. Code that requires an optional backend is guarded in the
+> examples or should be run only after
+> [`pca_capabilities()`](https://wep69.github.io/pcaLab/reference/pca_capabilities.md)
+> confirms availability.
+
+### Learning objectives
+
+The reader will learn to:
+
+1.  explain why no universal cumulative-variance threshold determines
+    the true rank;
+2.  use scree, broken-stick, Horn-style parallel analysis, permutation
+    references, masked cross-validation, Marchenko-Pastur screening, and
+    PPCA-BIC appropriately;
+3.  interpret disagreement among criteria rather than hiding it;
+4.  distinguish descriptive PCA from inferential PCA;
+5.  use
+    [`pca_test()`](https://wep69.github.io/pcaLab/reference/pca_test.md)
+    only for the standardized classical setting it supports;
+6.  bootstrap eigenvalues, PVE, loadings, correlations, and scores with
+    component alignment;
+7.  understand component swapping, sign alignment, principal angles, and
+    subspace stability;
+8.  combine effect size, contribution, cos², multiplicity-adjusted
+    inference, and bootstrap stability with
+    [`pca_associate()`](https://wep69.github.io/pcaLab/reference/pca_associate.md).
+
+### Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in
+depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** Component retention and uncertainty, integrating
+descriptive, null-reference, cross-validation, probabilistic, bootstrap,
+and subspace evidence.
+
+**Not developed here:** Outlier-resistant estimation, missing-data
+engines, nonlinear manifolds, and structured experimental decompositions
+are treated in separate vignettes.
+
+## Part III. How many components?
+
+### 14. Dimensionality is not a single-rule decision
+
+The package intentionally exposes disagreement among criteria.
+
+``` r
+
+selection <- pca_ncomp(
+  fit,
+  methods = "all",
+  cumulative_threshold = 0.90,
+  nperm = 499,
+  nboot = 250,
+  seed = 42
+)
+
+selection$recommendations
+selection$consensus
+selection$disagreement_range
+selection$caution
+```
+
+#### 14.1 Scree elbow
+
+The scree criterion looks for a sharp change in the eigenvalue
+trajectory.
+
+``` r
+
+pca_plot(fit, type = "scree")
+```
+
+It is visually intuitive, but elbows can be ambiguous.
+
+#### 14.2 Cumulative explained variance
+
+``` r
+
+pca_plot(fit, type = "cumulative")
+```
+
+Thresholds such as 80%, 90%, or 95% are conventions, not universal
+statistical laws.
+
+#### 14.3 Kaiser criterion
+
+For centered unit-variance correlation PCA, eigenvalues greater than 1
+can be used as a historical screening criterion because an average
+standardized original variable contributes variance 1.
+
+`pcaLab` does not apply Kaiser automatically when unit-variance
+correlation geometry is absent.
+
+#### 14.4 Broken-stick criterion
+
+``` r
+
+bs <- pca_broken_stick(ncol(X))
+bs
+```
+
+The broken-stick model provides a reference allocation of proportions
+expected when total variance is divided randomly among ordered
+dimensions.
+
+#### 14.5 Parallel analysis
+
+Normal-reference parallel analysis:
+
+``` r
+
+pa_normal <- pca_parallel(
+  fit,
+  nperm = 999,
+  null = "normal",
+  seed = 42
+)
+
+pa_normal$k
+```
+
+Permutation-reference parallel analysis:
+
+``` r
+
+pa_perm <- pca_parallel(
+  fit,
+  nperm = 999,
+  null = "permutation",
+  seed = 42
+)
+
+pa_perm$k
+```
+
+The permutation version preserves each variable’s marginal distribution
+while breaking dependence between variables.
+
+#### 14.6 Masked reconstruction cross-validation
+
+``` r
+
+cv <- pca_cv(
+  fit,
+  kmax = 6,
+  repeats = 30,
+  holdout = 0.10,
+  seed = 42
+)
+
+cv$k
+cv$table
+```
+
+Cross-validation asks a different question from a scree plot: how well
+does a low-rank model reconstruct values that were deliberately hidden?
+
+#### 14.7 Bootstrap stability
+
+A component can explain variance yet be unstable across resampled
+datasets.
+[`pca_ncomp()`](https://wep69.github.io/pcaLab/reference/pca_ncomp.md)
+can incorporate a bootstrap subspace stability rule for engines with a
+faithful bootstrap refit.
+
+#### 14.8 Marchenko-Pastur screening
+
+For standardized high-dimensional independent-noise references, the
+upper Marchenko-Pastur edge is
+
+``` math
+\lambda_+ = \left(1+\sqrt{q}\right)^2,
+\qquad
+q = \frac{p}{n_{\mathrm{eff}}}.
+```
+
+This is a screening reference, not a universal decision rule. Correlated
+noise, finite samples, heteroscedasticity, missingness, or structured
+dependence can shift the empirical spectrum.
+
+#### 14.9 PPCA-BIC
+
+The package can evaluate candidate latent dimensions through a
+probabilistic PCA likelihood and BIC-style penalty.
+
+#### 14.10 Plot all recommendations together
+
+``` r
+
+pca_plot(
+  fit,
+  type = "dimension_selection",
+  selection = selection
+)
+```
+
+#### 14.11 Interpretation
+
+Suppose several criteria recommend 2 components, cross-validation favors
+3, and stability supports only the first 2 strongly. A defensible
+conclusion is not “the correct number is 2 because the median says so.”
+A better conclusion is:
+
+- two components are strongly supported and stable;
+- a third component may improve reconstruction;
+- interpretation beyond PC2 should therefore be cautious and
+  purpose-dependent.
+
+That is why `selection$disagreement_range` is retained.
+
+------------------------------------------------------------------------
+
+## Part IV. Inference, bootstrap, and stability
+
+### 15. Descriptive PCA is not automatically inferential PCA
+
+Classical PCA always returns ordered components. Even independent noise
+variables produce a largest eigenvalue and a first principal component.
+
+The question is whether the observed structure is stronger than expected
+under an explicit null reference.
+
+#### 15.1 Standardized PCAtest-style permutation inference
+
+[`pca_test()`](https://wep69.github.io/pcaLab/reference/pca_test.md) is
+designed for centered, unit-variance classical PCA geometry.
+
+``` r
+
+ptest <- pca_test(
+  fit,
+  nperm = 999,
+  alpha = 0.05,
+  variable_tests = TRUE,
+  adjust = "BH",
+  seed = 42
+)
+
+ptest$global
+ptest$axes
+```
+
+The function provides:
+
+- global structure statistics `Psi` and `Phi`;
+- axis-wise rank-of-roots/eigenvalue evidence;
+- variable loading-index evidence;
+- variable-PC correlation evidence;
+- multiplicity-adjusted results.
+
+#### 15.2 Publication tables
+
+``` r
+
+pca_table(
+  fit,
+  type = "inference_global",
+  inference = ptest
+)
+
+pca_table(
+  fit,
+  type = "inference_axes",
+  inference = ptest
+)
+```
+
+#### 15.3 Axis inference figure
+
+``` r
+
+pca_plot(
+  fit,
+  type = "inference_axes",
+  inference = ptest
+)
+```
+
+#### Interpretation
+
+A small permutation p-value for an axis indicates that the observed
+eigenvalue or corresponding axis statistic is unusually large under the
+specified null reference. It does not test treatment separation, causal
+relevance, or biological importance.
+
+Group hypotheses require methods designed around those groups, such as
+ASCA for designed multivariate experiments or another appropriate
+multivariate inferential model.
+
+------------------------------------------------------------------------
+
+### 16. Bootstrap uncertainty with component alignment
+
+Bootstrap PCA is more difficult than repeatedly calling PCA because
+components can switch order or flip sign between resamples.
+
+[`pca_boot()`](https://wep69.github.io/pcaLab/reference/pca_boot.md)
+therefore:
+
+1.  resamples observations;
+2.  refits the requested PCA geometry when supported;
+3.  matches bootstrap components to reference components;
+4.  aligns signs;
+5.  stores eigenvalues, PVE, loadings, correlations, and similarities;
+6.  calculates intervals and sign stability.
+
+#### 16.1 Teaching-scale bootstrap
+
+Use a small number only while learning the workflow:
+
+``` r
+
+boot_demo <- pca_boot(
+  fit,
+  nboot = 100,
+  seed = 42
+)
+```
+
+#### 16.2 Analysis-scale bootstrap
+
+``` r
+
+boot <- pca_boot(
+  fit,
+  nboot = 1999,
+  conf = 0.95,
+  seed = 42
+)
+
+boot$eigenvalue_ci
+boot$pve_ci
+boot$sign_stability
+```
+
+#### 16.3 Bootstrap eigenvalue table
+
+``` r
+
+pca_table(
+  fit,
+  type = "bootstrap_eigenvalues",
+  bootstrap = boot
+)
+```
+
+#### 16.4 Bootstrap loading intervals
+
+``` r
+
+pca_plot(
+  fit,
+  type = "bootstrap_loadings",
+  component = 1,
+  bootstrap = boot
+)
+```
+
+#### 16.5 Eigenvalue intervals
+
+``` r
+
+pca_plot(
+  fit,
+  type = "eigen_ci",
+  bootstrap = boot
+)
+```
+
+#### Interpretation
+
+A loading can be large in the original sample but unstable across
+resamples. Conversely, a moderate loading with narrow bootstrap
+uncertainty may be more reproducible.
+
+Sign stability is especially useful after component alignment. Values
+near 1 indicate that the loading consistently retains its aligned
+direction. Values near 0.5 indicate severe sign or component ambiguity.
+
+------------------------------------------------------------------------
+
+### 17. Subspace stability matters when eigenvalues are close
+
+When $`\lambda_1`$ and $`\lambda_2`$ are nearly equal, small
+perturbations can rotate PC1 and PC2 within their shared two-dimensional
+subspace.
+
+Then the individual loading vectors can be unstable even if the plane
+spanned by them is stable.
+
+#### 17.1 Evaluate stability
+
+``` r
+
+stab <- pca_stability(
+  fit,
+  nboot = 999,
+  kmax = min(5, fit$ncomp),
+  seed = 42
+)
+
+stab$summary
+```
+
+The summary includes:
+
+| Field | Interpretation |
+|----|----|
+| `k` | dimension of the nested subspace |
+| `median_max_angle` | typical largest principal angle between bootstrap and reference subspaces |
+| `upper95_max_angle` | upper 95% reference for maximum angle |
+| `median_similarity` | median aligned component similarity |
+
+#### 17.2 A near-degenerate simulation
+
+``` r
+
+sim_tied <- pca_simulate(
+  n = 250,
+  p = 12,
+  rank = 3,
+  eigenvalues = c(4.0, 3.9, 1.2),
+  noise = 0.45,
+  seed = 123
+)
+
+fit_tied <- pca_fit(
+  sim_tied$data,
+  method = "classical",
+  center = TRUE,
+  scale = FALSE,
+  ncomp = 3
+)
+
+stab_tied <- pca_stability(
+  fit_tied,
+  nboot = 500,
+  kmax = 3,
+  seed = 123
+)
+
+stab_tied$summary
+```
+
+#### Interpretation
+
+If PC1 and PC2 individually fluctuate but the two-dimensional subspace
+remains stable, interpret the pair jointly rather than forcing a rigid
+biological name onto each axis.
+
+This is one of the most important safeguards in advanced PCA
+interpretation.
+
+------------------------------------------------------------------------
+
+### 18. Associate variables with components using several kinds of evidence
+
+Combine descriptive effect size, representation, inference, and
+stability:
+
+``` r
+
+assoc <- pca_associate(
+  fit,
+  test = ptest,
+  boot = boot,
+  alpha = 0.05,
+  min_sign_stability = 0.80
+)
+
+head(assoc)
+```
+
+The long-form table contains:
+
+| Quantity | Scientific role |
+|----|----|
+| `loading` | direction coefficient |
+| `correlation` | variable-PC linear association |
+| `cos2` | representation quality |
+| `contribution` | share of component construction |
+| `loading_ci_low`, `loading_ci_high` | bootstrap loading uncertainty |
+| `sign_stability` | aligned bootstrap directional stability |
+| `axis_significant` | whether the component passes axis-level permutation evidence |
+| `loading_index_q` | multiplicity-adjusted loading-index evidence |
+| `correlation_q` | multiplicity-adjusted variable-PC correlation evidence |
+| `above_average_contribution` | contribution greater than `1/p` |
+| `combined_association` | package synthesis of contribution, inference, and stability |
+
+Publication table:
+
+``` r
+
+assoc_table <- pca_table(
+  fit,
+  type = "associations",
+  inference = ptest,
+  bootstrap = boot,
+  association = assoc
+)
+
+assoc_table
+```
+
+#### Interpretation
+
+Prefer variables for substantive interpretation when several lines of
+evidence agree.
+
+For example, a strong PC1 variable might show:
+
+- an appreciable absolute loading;
+- correlation with PC1 near the upper end of the variable set;
+- high cos²;
+- contribution above `1/p`;
+- low FDR-adjusted permutation q-values;
+- a bootstrap interval not concentrated near zero;
+- high sign stability.
+
+A single large loading without these supporting features should be
+interpreted more cautiously.
+
+### 55. Selecting components only because cumulative variance exceeds 80% or 90%
+
+Use:
+
+``` r
+
+pca_ncomp()
+pca_parallel()
+pca_cv()
+pca_stability()
+```
+
+Report disagreement among criteria.
+
+------------------------------------------------------------------------
+
+### 56. Declaring treatment separation significant from a score plot
+
+Use group labels only as supplementary overlays:
+
+``` r
+
+pca_group()
+pca_plot()
+```
+
+For designed multivariate effects, consider:
+
+``` r
+
+pca_asca()
+```
+
+------------------------------------------------------------------------
+
+### 57. Calling every large loading important
+
+Use:
+
+``` r
+
+pca_associate()
+pca_table(type = "variables")
+pca_plot(type = "contributions")
+pca_plot(type = "cos2")
+```
+
+Combine effect magnitude, representation, inference, and stability.
+
+------------------------------------------------------------------------
+
+### 58. Ignoring nearly tied eigenvalues
+
+Use:
+
+``` r
+
+pca_stability()
+```
+
+Interpret the stable subspace if individual axes are unstable.
+
+------------------------------------------------------------------------
+
+### 59. Deleting observations only because diagnostics flag them
+
+Use:
+
+``` r
+
+pca_diagnose()
+pca_compare()
+pca_fit(method = "robust")
+pca_fit(method = "cellwise")
+```
+
+Investigate provenance and perform sensitivity analysis.
+
+------------------------------------------------------------------------
+
+### Where to continue
+
+For difficult observations and contamination, continue to
+`04-diagnostics-robust-sparse-rpca.Rmd`. For high-dimensional rank
+problems, see `05-missing-probabilistic-high-dimensional.Rmd`.
+
+### Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching
+data. They demonstrate workflow and interpretation, not empirical
+evidence. For stochastic procedures, set and report a seed. For optional
+engines, record backend versions with
+[`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) and preserve
+the preprocessing specification used to create the fitted object.

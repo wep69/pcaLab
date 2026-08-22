@@ -47,7 +47,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 A comparison can be generated from raw data:
 
-```r
+```{r, eval=FALSE}
 cmp_auto <- pca_compare(
   X,
   methods = c("classical", "rpca"),
@@ -62,7 +62,7 @@ cmp_auto$subspace_angles
 
 Or from already fitted models:
 
-```r
+```{r, eval=FALSE}
 fit_classic2 <- pca_fit(
   X,
   method = "classical",
@@ -115,7 +115,7 @@ Compare methods only on metrics that are meaningful for both methods, and keep t
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_preprocess()
 pca_teach_scaling()
 pca_doctor()
@@ -129,7 +129,7 @@ Unit-variance scaling is often sensible when variables are measured in different
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_teach_variance()
 pca_teach_eigen()
 pca_teach_svd()
@@ -153,7 +153,7 @@ for ordinary linear PCA, and
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_boot()
 pca_stability()
 ```
@@ -172,7 +172,7 @@ PCA components are constructed to be uncorrelated in ordinary PCA. Statistical i
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_ncomp()
 pca_parallel()
 pca_cv()
@@ -187,14 +187,14 @@ Report disagreement among criteria.
 
 Use group labels only as supplementary overlays:
 
-```r
+```{r, eval=FALSE}
 pca_group()
 pca_plot()
 ```
 
 For designed multivariate effects, consider:
 
-```r
+```{r, eval=FALSE}
 pca_asca()
 ```
 
@@ -204,7 +204,7 @@ pca_asca()
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_associate()
 pca_table(type = "variables")
 pca_plot(type = "contributions")
@@ -219,7 +219,7 @@ Combine effect magnitude, representation, inference, and stability.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_stability()
 ```
 
@@ -231,7 +231,7 @@ Interpret the stable subspace if individual axes are unstable.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_diagnose()
 pca_compare()
 pca_fit(method = "robust")
@@ -248,7 +248,7 @@ Casewise and cellwise contamination are different problems.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "robust")
 pca_fit(method = "cellwise")
 ```
@@ -261,7 +261,7 @@ according to the contamination mechanism.
 
 They solve different mathematical problems.
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "rpca")
 pca_fit(method = "robust")
 ```
@@ -274,7 +274,7 @@ The first decomposes a matrix into low-rank and sparse parts. The second estimat
 
 Consider:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "logistic")
 pca_fit(method = "glmpca")
 ```
@@ -287,7 +287,7 @@ Do not automatically transfer Gaussian eigenvalue rules to generalized PCA.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "compositional")
 ```
 
@@ -299,7 +299,7 @@ and report the log-ratio coordinate system and any zero replacement.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "dynamic")
 ```
 
@@ -311,7 +311,7 @@ and report `lags`, `include_current`, scaling, and the interpretation of lagged 
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "multilevel", level = "within")
 pca_fit(method = "multilevel", level = "between")
 ```
@@ -324,7 +324,7 @@ when repeated measures create distinct covariance levels.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_capabilities()
 pca_doctor()
 pca_compare()
@@ -559,7 +559,7 @@ Ignoring data structure can produce misleading uncertainty and component interpr
 
 PCA is not a classifier and does not seek group separation. Coloring score plots by treatment after fitting is descriptive. If the scientific question is a treatment effect, use a design-based multivariate inferential model, ASCA/permutation design, discriminant method, mixed model, or other approach appropriate to the experiment.
 
-```{r}
+```{r, eval=FALSE}
 ex <- pca_example_agronomy()
 d <- pca_doctor(ex$data)
 d$warnings

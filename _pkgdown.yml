@@ -1,15 +1,61 @@
 template:
   bootstrap: 5
+url: https://wep69.github.io/pcaLab
 reference:
+- title: Package
+  contents:
+  - pcaLab-package
 - title: Core PCA
-  contents: [pca_fit, pca_preprocess, pca_reconstruct, pca_doctor, pca_capabilities]
+  contents:
+  - pca_fit
+  - pca_preprocess
+  - pca_reconstruct
+  - pca_doctor
+  - pca_capabilities
+  - pca_simulate
+  - pca_example_agronomy
 - title: Dimensionality and inference
-  contents: [pca_ncomp, pca_parallel, pca_cv, pca_broken_stick, pca_test, pca_boot, pca_stability, pca_associate]
+  contents:
+  - pca_ncomp
+  - pca_parallel
+  - pca_cv
+  - pca_broken_stick
+  - pca_test
+  - pca_boot
+  - pca_stability
+  - pca_associate
 - title: Diagnostics and comparison
-  contents: [pca_diagnose, pca_compare, pca_supplementary, pca_group]
+  contents:
+  - pca_diagnose
+  - pca_compare
+  - pca_supplementary
+  - pca_group
 - title: Graphics, tours, and reporting
-  contents: [pca_plot, pca_export_plot, pca_theme_publication, pca_tour, pca_tour_compare, pca_table, pca_export_table, pca_report]
+  contents:
+  - pca_plot
+  - pca_export_plot
+  - pca_theme_publication
+  - pca_tour
+  - pca_tour_compare
+  - pca_table
+  - pca_export_table
+  - pca_report
 - title: Structured PCA
-  contents: [pca_asca, pca_multiblock, pca_incremental_init, pca_incremental_update, pca_incremental_finalize]
+  contents:
+  - pca_asca
+  - pca_multiblock
+  - pca_incremental_init
+  - pca_incremental_update
+  - pca_incremental_finalize
 - title: Teaching
-  contents: [starts_with("pca_teach")]
+  contents:
+  - starts_with("pca_teach")
+- title: Clustering on PCA scores
+  contents:
+  - pca_cluster
+  - pca_cluster_evaluate
+  - pca_cluster_compare
+  - pca_cluster_stability
+  - pca_cluster_boundary
+  - pca_cluster_labels
+  - pca_cluster_report

@@ -1,0 +1,448 @@
+# Teaching PCA with pcaLab: From Visual Rotation to Advanced Component Reasoning
+
+## Teaching PCA with pcaLab: From Visual Rotation to Advanced Component Reasoning
+
+**Package:** `pcaLab`\
+**Target version:** `0.1.0`\
+**Role in the vignette system:** A dedicated teaching sequence that
+converts the package mathematical demonstrations into lectures, computer
+laboratories, exercises, and assessment prompts.
+
+> This source is intentionally instructional. It is not precompiled
+> here. Code that requires an optional backend is guarded in the
+> examples or should be run only after
+> [`pca_capabilities()`](https://wep69.github.io/pcaLab/reference/pca_capabilities.md)
+> confirms availability.
+
+### Learning objectives
+
+The instructor or self-learner will learn to:
+
+1.  teach PCA from visualization before matrix algebra;
+2.  connect rotation, variance, eigenvectors, and SVD in a progressive
+    sequence;
+3.  use all ten `pca_teach_*()` functions coherently;
+4.  teach signs, rank, reconstruction, and near-degenerate eigenspaces
+    explicitly;
+5.  introduce scaling and component selection as scientific decisions;
+6.  use the interactive teaching application as a capstone rather than
+    as a black box;
+7.  design exercises that lead students from geometric intuition to
+    reproducible R analysis.
+
+### Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in
+depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** A dedicated teaching sequence that converts the
+package mathematical demonstrations into lectures, computer
+laboratories, exercises, and assessment prompts.
+
+**Not developed here:** The full details of robust, generalized, and
+structured engines are deliberately omitted; students are directed to
+the corresponding focused vignettes after mastering the foundations.
+
+## Part XVII. Teaching mode
+
+### 50. Use the ten teaching functions before the advanced engines
+
+``` r
+
+pca_teach_rotation()
+pca_teach_variance()
+pca_teach_eigen()
+pca_teach_svd()
+pca_teach_scores()
+pca_teach_loadings()
+pca_teach_reconstruction()
+pca_teach_scaling()
+pca_teach_ncomp()
+pca_teach_biplot()
+```
+
+Each returns a structured teaching object containing some combination
+of:
+
+- title;
+- concept;
+- equations;
+- steps;
+- numerical data;
+- optional plot object.
+
+#### 50.1 Suggested classroom progression
+
+**Class 1:** coordinates, rotation, and preservation of distance.\
+**Class 2:** variance as information along a direction.\
+**Class 3:** covariance, eigenvalues, and eigenvectors.\
+**Class 4:** SVD, scores, and loadings.\
+**Class 5:** scaling, correlation PCA, and biplots.\
+**Class 6:** number of components and reconstruction.\
+**Class 7:** permutation inference and bootstrap stability.\
+**Class 8:** diagnostics and robust PCA.\
+**Class 9:** sparse, missing-data, high-dimensional, and nonlinear PCA.\
+**Class 10:** compositional, functional, dynamic, structured PCA, tours,
+and reporting.
+
+#### 50.2 Launch the interactive teaching laboratory
+
+``` r
+
+if (requireNamespace("shiny", quietly = TRUE)) {
+  pca_teach_app()
+}
+```
+
+The Shiny application is best used after students have seen the algebra
+in static form. Interactivity should reinforce the geometry rather than
+replace mathematical understanding.
+
+------------------------------------------------------------------------
+
+### 5. Rotation is the bridge from geometry to PCA
+
+The attached teaching strategy that motivated this package starts from a
+powerful idea: before introducing eigendecomposition, show students that
+a cloud of points can be viewed from different directions.
+
+#### 5.1 Rotate three simple observations
+
+``` r
+
+rot <- pca_teach_rotation(angle = 45)
+rot$title
+rot$concept
+rot$equations
+rot$data$original
+rot$data$rotated
+rot$data$rotation
+```
+
+The demonstration uses a two-dimensional rotation. If a point has
+coordinates $`(x,y)`$, a rotated coordinate system can be written as
+
+``` math
+x' = x\cos(\theta) + y\sin(\theta),
+```
+
+``` math
+y' = -x\sin(\theta) + y\cos(\theta).
+```
+
+The transformed coordinates are weighted linear combinations of the
+original variables. This is already the essential algebraic form of a
+principal component.
+
+#### 5.2 Verify that rotation preserves distance
+
+``` r
+
+X0 <- rot$data$original
+X1 <- rot$data$rotated
+
+as.matrix(dist(X0))
+as.matrix(dist(X1))
+
+max(abs(as.matrix(dist(X0)) - as.matrix(dist(X1))))
+```
+
+**Interpretation.** An orthogonal rotation does not change the
+underlying pairwise Euclidean distances. It changes the coordinate
+system used to describe the same configuration. PCA uses this freedom to
+choose axes that concentrate variance efficiently.
+
+#### 5.3 Search for the direction of maximum variance
+
+``` r
+
+var_demo <- pca_teach_variance(
+  angles = seq(0, 180, by = 1)
+)
+
+head(var_demo$data)
+var_demo$steps
+```
+
+A publication-style plot can be constructed from the returned teaching
+data:
+
+``` r
+
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  p_var <- ggplot2::ggplot(
+    var_demo$data,
+    ggplot2::aes(angle, projected_variance)
+  ) +
+    ggplot2::geom_line(linewidth = 0.7) +
+    ggplot2::labs(
+      x = "Projection angle (degrees)",
+      y = "Variance of projected scores",
+      title = "Searching for the maximum-variance direction"
+    ) +
+    pca_theme_publication()
+
+  p_var
+}
+```
+
+The optimization problem is
+
+``` math
+\max_{\mathbf v} \; \mathbf v^\top \mathbf S\mathbf v
+```
+
+subject to
+
+``` math
+\mathbf v^\top\mathbf v = 1.
+```
+
+The unit-length constraint matters. Without it, multiplying
+$`\mathbf v`$ by an arbitrarily large constant would make the projected
+variance arbitrarily large.
+
+------------------------------------------------------------------------
+
+#### 6.1 Center the matrix
+
+For an $`n \times p`$ data matrix $`\mathbf X`$, define a centered
+matrix $`\mathbf X_c`$ by subtracting each column mean.
+
+The sample covariance matrix is
+
+``` math
+\mathbf S = \frac{1}{n-1}\mathbf X_c^\top\mathbf X_c.
+```
+
+For a unit vector $`\mathbf v`$, the projected score vector is
+
+``` math
+\mathbf t = \mathbf X_c\mathbf v.
+```
+
+Its variance is
+
+``` math
+\operatorname{Var}(\mathbf t)
+= \mathbf v^\top\mathbf S\mathbf v.
+```
+
+#### 6.2 Lagrange multiplier derivation
+
+To maximize projected variance while enforcing
+$`\mathbf v^\top\mathbf v=1`$, define
+
+``` math
+\mathcal L(\mathbf v,\lambda)
+= \mathbf v^\top\mathbf S\mathbf v
+- \lambda(\mathbf v^\top\mathbf v - 1).
+```
+
+Differentiating with respect to $`\mathbf v`$ gives
+
+``` math
+2\mathbf S\mathbf v - 2\lambda\mathbf v = 0,
+```
+
+therefore
+
+``` math
+\mathbf S\mathbf v = \lambda\mathbf v.
+```
+
+This is the eigenvalue problem.
+
+The first principal loading vector is the eigenvector associated with
+the largest eigenvalue. The second component uses the next eigenvector,
+orthogonal to the first, and so on.
+
+#### 6.3 Inspect the calculation directly
+
+``` r
+
+eig_demo <- pca_teach_eigen(scale = FALSE)
+
+eig_demo$data$covariance
+eig_demo$data$eigenvalues
+eig_demo$data$eigenvectors
+eig_demo$data$eigen_equation_residual
+```
+
+The teaching function reports the numerical residual of
+
+``` math
+\mathbf S\mathbf v_k - \lambda_k\mathbf v_k.
+```
+
+A correctly computed eigensystem should have residuals close to
+numerical zero.
+
+#### 6.4 What an eigenvalue means in ordinary PCA
+
+For classical covariance PCA,
+
+``` math
+\lambda_k = \operatorname{Var}(PC_k).
+```
+
+The proportion of variance explained is
+
+``` math
+\mathrm{PVE}_k
+= \frac{\lambda_k}{\sum_j \lambda_j}.
+```
+
+The cumulative proportion through component $`K`$ is
+
+``` math
+\mathrm{CPVE}_K
+= \sum_{k=1}^{K}\mathrm{PVE}_k.
+```
+
+A large first eigenvalue means that one direction captures much more
+variance than other orthogonal directions. It does not automatically
+mean that the component is biologically important, causal, inferentially
+significant, or stable.
+
+#### 6.5 The sign of an eigenvector is arbitrary
+
+If
+
+``` math
+\mathbf S\mathbf v = \lambda\mathbf v,
+```
+
+then
+
+``` math
+\mathbf S(-\mathbf v) = \lambda(-\mathbf v).
+```
+
+Therefore $`\mathbf v`$ and $`-\mathbf v`$ define exactly the same PCA
+axis. Software, operating systems, BLAS libraries, or repeated
+decompositions can legitimately return opposite signs.
+
+Never interpret a sign flip by itself as a scientific reversal.
+
+------------------------------------------------------------------------
+
+### 7. SVD is the computational form of the same geometry
+
+For a centered matrix,
+
+``` math
+\mathbf X_c = \mathbf U\mathbf D\mathbf V^\top.
+```
+
+Then:
+
+``` math
+\mathbf T = \mathbf U\mathbf D = \mathbf X_c\mathbf V
+```
+
+contains the scores,
+
+``` math
+\mathbf V
+```
+
+contains the loading directions, and
+
+``` math
+\lambda_k = \frac{d_k^2}{n-1}.
+```
+
+Use the package teaching function:
+
+``` r
+
+svd_demo <- pca_teach_svd(
+  data = pca_example_agronomy(seed = 42)$data,
+  scale = TRUE
+)
+
+names(svd_demo$data)
+svd_demo$equations
+svd_demo$steps
+```
+
+#### 7.1 Why SVD is usually preferable computationally
+
+Forming $`\mathbf X^\top\mathbf X`$ explicitly can amplify numerical
+conditioning problems. SVD works directly with the rectangular data
+matrix and is particularly natural when $`n`$ and $`p`$ differ strongly.
+
+`pcaLab` therefore uses SVD for the classical PCA engine.
+
+### A progressive teaching sequence using package functions
+
+| Session | Conceptual target | Main pcaLab functions | Student product |
+|---:|----|----|----|
+| 1 | coordinates, rotation, projection | [`pca_teach_rotation()`](https://wep69.github.io/pcaLab/reference/pca_teach_rotation.md) | hand calculation and rotating point cloud |
+| 2 | variance as directional information | [`pca_teach_variance()`](https://wep69.github.io/pcaLab/reference/pca_teach_variance.md) | variance-versus-angle figure |
+| 3 | eigenvalues and eigenvectors | [`pca_teach_eigen()`](https://wep69.github.io/pcaLab/reference/pca_teach_eigen.md) | geometric explanation of `S v = lambda v` |
+| 4 | SVD and rank | [`pca_teach_svd()`](https://wep69.github.io/pcaLab/reference/pca_teach_svd.md) | link among `U`, `D`, `V`, scores, and PVE |
+| 5 | scores and loadings | [`pca_teach_scores()`](https://wep69.github.io/pcaLab/reference/pca_teach_scores.md), [`pca_teach_loadings()`](https://wep69.github.io/pcaLab/reference/pca_teach_loadings.md) | labeled score/loading interpretation |
+| 6 | reconstruction | [`pca_teach_reconstruction()`](https://wep69.github.io/pcaLab/reference/pca_teach_reconstruction.md) | error-versus-rank table and plot |
+| 7 | scaling | [`pca_teach_scaling()`](https://wep69.github.io/pcaLab/reference/pca_teach_scaling.md) | covariance-vs-correlation comparison |
+| 8 | dimensionality | [`pca_teach_ncomp()`](https://wep69.github.io/pcaLab/reference/pca_teach_ncomp.md) | retention evidence table |
+| 9 | biplots | [`pca_teach_biplot()`](https://wep69.github.io/pcaLab/reference/pca_teach_biplot.md) | interpretation checklist |
+| 10 | integrated laboratory | [`pca_teach_app()`](https://wep69.github.io/pcaLab/reference/pca_teach_app.md) | guided analysis report |
+
+#### Classroom exercise: why eigenvector sign does not matter
+
+Ask students to fit the same centered PCA twice, multiply the first
+loading vector by `-1`, and also multiply the corresponding score column
+by `-1`. They should verify that the reconstructed rank-1 matrix is
+identical. This exercise prevents one of the most persistent biological
+interpretation errors in PCA.
+
+#### Classroom exercise: nearly tied eigenvalues
+
+Simulate two latent dimensions with almost equal variance. Resample
+observations repeatedly and compare individual loading vectors with the
+angle between the two-dimensional subspaces. Students should discover
+that axis labels can rotate substantially while the joint subspace
+remains stable. This prepares them for
+[`pca_stability()`](https://wep69.github.io/pcaLab/reference/pca_stability.md)
+and avoids overconfident axis-specific narratives.
+
+#### Classroom exercise: scaling changes the scientific question
+
+Create three traits measured in different units, fit covariance PCA and
+standardized PCA, and ask which traits dominate each solution. The point
+is not to identify one universally correct fit, but to connect
+preprocessing to the meaning of variance.
+
+#### Assessment prompts
+
+1.  Explain in words why PCA is an optimization problem before writing
+    any matrix equation.
+2.  Distinguish an eigenvector loading from a correlation loading.
+3.  Explain why two components can be uncorrelated without being
+    independent.
+4.  Give one situation in which ROBPCA is appropriate and one in which
+    it is not.
+5.  Explain why a binary matrix may call for logistic PCA.
+6.  State what evidence you would use to retain three components rather
+    than two.
+7.  Explain why a treatment-colored score plot is not a significance
+    test.
+8.  Describe how you would communicate uncertainty in variable-component
+    associations.
+
+### Where to continue
+
+After the teaching sequence, use `00-start-here-integrated-workflow.Rmd`
+as the capstone analysis and assign one advanced-method vignette
+according to the student’s application domain.
+
+### Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching
+data. They demonstrate workflow and interpretation, not empirical
+evidence. For stochastic procedures, set and report a seed. For optional
+engines, record backend versions with
+[`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) and preserve
+the preprocessing specification used to create the fitted object.

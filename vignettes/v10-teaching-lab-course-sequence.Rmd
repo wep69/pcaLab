@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Teaching PCA with pcaLab: From Visual Rotation to Advanced Component Reasoning
 
 **Package:** `pcaLab`  
@@ -39,7 +45,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 ## 50. Use the ten teaching functions before the advanced engines
 
-```r
+```{r, eval=FALSE}
 pca_teach_rotation()
 pca_teach_variance()
 pca_teach_eigen()
@@ -76,7 +82,7 @@ Each returns a structured teaching object containing some combination of:
 
 ### 50.2 Launch the interactive teaching laboratory
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("shiny", quietly = TRUE)) {
   pca_teach_app()
 }
@@ -93,7 +99,7 @@ The attached teaching strategy that motivated this package starts from a powerfu
 
 ### 5.1 Rotate three simple observations
 
-```r
+```{r, eval=FALSE}
 rot <- pca_teach_rotation(angle = 45)
 rot$title
 rot$concept
@@ -117,7 +123,7 @@ The transformed coordinates are weighted linear combinations of the original var
 
 ### 5.2 Verify that rotation preserves distance
 
-```r
+```{r, eval=FALSE}
 X0 <- rot$data$original
 X1 <- rot$data$rotated
 
@@ -131,7 +137,7 @@ max(abs(as.matrix(dist(X0)) - as.matrix(dist(X1))))
 
 ### 5.3 Search for the direction of maximum variance
 
-```r
+```{r, eval=FALSE}
 var_demo <- pca_teach_variance(
   angles = seq(0, 180, by = 1)
 )
@@ -142,7 +148,7 @@ var_demo$steps
 
 A publication-style plot can be constructed from the returned teaching data:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   p_var <- ggplot2::ggplot(
     var_demo$data,
@@ -228,7 +234,7 @@ The first principal loading vector is the eigenvector associated with the larges
 
 ### 6.3 Inspect the calculation directly
 
-```r
+```{r, eval=FALSE}
 eig_demo <- pca_teach_eigen(scale = FALSE)
 
 eig_demo$data$covariance
@@ -317,7 +323,7 @@ contains the loading directions, and
 
 Use the package teaching function:
 
-```r
+```{r, eval=FALSE}
 svd_demo <- pca_teach_svd(
   data = pca_example_agronomy(seed = 42)$data,
   scale = TRUE

@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # How Many Components? Dimensionality, Permutation Inference, Bootstrap, and Stability
 
 **Package:** `pcaLab`  
@@ -42,7 +48,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 The package intentionally exposes disagreement among criteria.
 
-```r
+```{r, eval=FALSE}
 selection <- pca_ncomp(
   fit,
   methods = "all",
@@ -62,7 +68,7 @@ selection$caution
 
 The scree criterion looks for a sharp change in the eigenvalue trajectory.
 
-```r
+```{r, eval=FALSE}
 pca_plot(fit, type = "scree")
 ```
 
@@ -70,7 +76,7 @@ It is visually intuitive, but elbows can be ambiguous.
 
 ### 14.2 Cumulative explained variance
 
-```r
+```{r, eval=FALSE}
 pca_plot(fit, type = "cumulative")
 ```
 
@@ -84,7 +90,7 @@ For centered unit-variance correlation PCA, eigenvalues greater than 1 can be us
 
 ### 14.4 Broken-stick criterion
 
-```r
+```{r, eval=FALSE}
 bs <- pca_broken_stick(ncol(X))
 bs
 ```
@@ -95,7 +101,7 @@ The broken-stick model provides a reference allocation of proportions expected w
 
 Normal-reference parallel analysis:
 
-```r
+```{r, eval=FALSE}
 pa_normal <- pca_parallel(
   fit,
   nperm = 999,
@@ -108,7 +114,7 @@ pa_normal$k
 
 Permutation-reference parallel analysis:
 
-```r
+```{r, eval=FALSE}
 pa_perm <- pca_parallel(
   fit,
   nperm = 999,
@@ -123,7 +129,7 @@ The permutation version preserves each variable's marginal distribution while br
 
 ### 14.6 Masked reconstruction cross-validation
 
-```r
+```{r, eval=FALSE}
 cv <- pca_cv(
   fit,
   kmax = 6,
@@ -160,7 +166,7 @@ The package can evaluate candidate latent dimensions through a probabilistic PCA
 
 ### 14.10 Plot all recommendations together
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "dimension_selection",
@@ -192,7 +198,7 @@ The question is whether the observed structure is stronger than expected under a
 
 `pca_test()` is designed for centered, unit-variance classical PCA geometry.
 
-```r
+```{r, eval=FALSE}
 ptest <- pca_test(
   fit,
   nperm = 999,
@@ -216,7 +222,7 @@ The function provides:
 
 ### 15.2 Publication tables
 
-```r
+```{r, eval=FALSE}
 pca_table(
   fit,
   type = "inference_global",
@@ -232,7 +238,7 @@ pca_table(
 
 ### 15.3 Axis inference figure
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "inference_axes",
@@ -265,7 +271,7 @@ Bootstrap PCA is more difficult than repeatedly calling PCA because components c
 
 Use a small number only while learning the workflow:
 
-```r
+```{r, eval=FALSE}
 boot_demo <- pca_boot(
   fit,
   nboot = 100,
@@ -275,7 +281,7 @@ boot_demo <- pca_boot(
 
 ### 16.2 Analysis-scale bootstrap
 
-```r
+```{r, eval=FALSE}
 boot <- pca_boot(
   fit,
   nboot = 1999,
@@ -290,7 +296,7 @@ boot$sign_stability
 
 ### 16.3 Bootstrap eigenvalue table
 
-```r
+```{r, eval=FALSE}
 pca_table(
   fit,
   type = "bootstrap_eigenvalues",
@@ -300,7 +306,7 @@ pca_table(
 
 ### 16.4 Bootstrap loading intervals
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "bootstrap_loadings",
@@ -311,7 +317,7 @@ pca_plot(
 
 ### 16.5 Eigenvalue intervals
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit,
   type = "eigen_ci",
@@ -335,7 +341,7 @@ Then the individual loading vectors can be unstable even if the plane spanned by
 
 ### 17.1 Evaluate stability
 
-```r
+```{r, eval=FALSE}
 stab <- pca_stability(
   fit,
   nboot = 999,
@@ -357,7 +363,7 @@ The summary includes:
 
 ### 17.2 A near-degenerate simulation
 
-```r
+```{r, eval=FALSE}
 sim_tied <- pca_simulate(
   n = 250,
   p = 12,
@@ -397,7 +403,7 @@ This is one of the most important safeguards in advanced PCA interpretation.
 
 Combine descriptive effect size, representation, inference, and stability:
 
-```r
+```{r, eval=FALSE}
 assoc <- pca_associate(
   fit,
   test = ptest,
@@ -427,7 +433,7 @@ The long-form table contains:
 
 Publication table:
 
-```r
+```{r, eval=FALSE}
 assoc_table <- pca_table(
   fit,
   type = "associations",
@@ -461,7 +467,7 @@ A single large loading without these supporting features should be interpreted m
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_ncomp()
 pca_parallel()
 pca_cv()
@@ -476,14 +482,14 @@ Report disagreement among criteria.
 
 Use group labels only as supplementary overlays:
 
-```r
+```{r, eval=FALSE}
 pca_group()
 pca_plot()
 ```
 
 For designed multivariate effects, consider:
 
-```r
+```{r, eval=FALSE}
 pca_asca()
 ```
 
@@ -493,7 +499,7 @@ pca_asca()
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_associate()
 pca_table(type = "variables")
 pca_plot(type = "contributions")
@@ -508,7 +514,7 @@ Combine effect magnitude, representation, inference, and stability.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_stability()
 ```
 
@@ -520,7 +526,7 @@ Interpret the stable subspace if individual axes are unstable.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_diagnose()
 pca_compare()
 pca_fit(method = "robust")

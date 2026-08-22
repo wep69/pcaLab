@@ -7,6 +7,12 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 5)
+library(pcaLab)
+```
+
+
 # Beyond Ordinary Euclidean PCA: Kernel, Nonlinear, Logistic, GLM, Compositional, Functional, Dynamic, and Multilevel PCA
 
 **Package:** `pcaLab`  
@@ -44,7 +50,7 @@ This vignette is intentionally focused. It develops the topics below in depth an
 
 Create a nonlinear simulation:
 
-```r
+```{r, eval=FALSE}
 sim_nonlin <- pca_simulate(
   n = 220,
   p = 8,
@@ -59,7 +65,7 @@ Xnl <- sim_nonlin$data
 
 Classical PCA:
 
-```r
+```{r, eval=FALSE}
 fit_nl_linear <- pca_fit(
   Xnl,
   method = "classical",
@@ -73,7 +79,7 @@ pca_plot(fit_nl_linear, type = "scores")
 
 RBF kernel PCA:
 
-```r
+```{r, eval=FALSE}
 fit_kpca <- pca_fit(
   Xnl,
   method = "kernel",
@@ -92,7 +98,7 @@ pca_plot(
 
 Polynomial kernel:
 
-```r
+```{r, eval=FALSE}
 fit_kpoly <- pca_fit(
   Xnl,
   method = "kernel",
@@ -118,7 +124,7 @@ For kernel PCA, ordinary Gaussian covariance-PCA explained-variance rules should
 
 When `pcaMethods` is available:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("pcaMethods", quietly = TRUE)) {
   fit_nlpca <- pca_fit(
     Xnl,
@@ -142,7 +148,7 @@ Nonlinear PCA is not one uniquely defined method. Different algorithms optimize 
 
 Suppose each plot is scored for presence or absence of 12 symptoms or morphological states.
 
-```r
+```{r, eval=FALSE}
 set.seed(4002)
 n_bin <- 120
 latent_bin <- rnorm(n_bin)
@@ -169,7 +175,7 @@ colnames(Xbin) <- paste0("symptom_", seq_len(12))
 
 Fit logistic PCA:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("logisticPCA", quietly = TRUE)) {
   fit_logistic <- pca_fit(
     Xbin,
@@ -185,7 +191,7 @@ if (requireNamespace("logisticPCA", quietly = TRUE)) {
 
 Engine-specific rank selection:
 
-```r
+```{r, eval=FALSE}
 if (exists("fit_logistic")) {
   select_logistic <- pca_ncomp(
     fit_logistic,
@@ -210,7 +216,7 @@ This is why `pcaLab` uses engine-specific validation instead of automatically ap
 
 Generate non-negative counts representing, for example, insect taxa sampled from plots:
 
-```r
+```{r, eval=FALSE}
 set.seed(4003)
 n_count <- 100
 p_count <- 16
@@ -231,7 +237,7 @@ colnames(Xcount) <- paste0("taxon_", seq_len(p_count))
 
 Poisson GLM-PCA:
 
-```r
+```{r, eval=FALSE}
 if (requireNamespace("glmpca", quietly = TRUE)) {
   fit_glmpca <- pca_fit(
     Xcount,
@@ -259,7 +265,7 @@ For candidate ranks, use likelihood, deviance, predictive validation, or method-
 
 Suppose a plant tissue sample is partitioned among six nutrient or biochemical fractions that form a composition.
 
-```r
+```{r, eval=FALSE}
 set.seed(5001)
 comp_raw <- matrix(
   rgamma(90 * 6, shape = rep(c(3, 4, 5, 2, 3, 4), each = 90)),
@@ -276,7 +282,7 @@ rowSums(comp)[1:5]
 
 ILR PCA:
 
-```r
+```{r, eval=FALSE}
 fit_comp <- pca_fit(
   comp,
   method = "compositional",
@@ -292,13 +298,13 @@ pca_plot(fit_comp, type = "scores")
 
 Inspect part-level loading representation:
 
-```r
+```{r, eval=FALSE}
 fit_comp$extra$part_loadings
 ```
 
 CLR alternative:
 
-```r
+```{r, eval=FALSE}
 fit_comp_clr <- pca_fit(
   comp,
   method = "compositional",
@@ -311,7 +317,7 @@ fit_comp_clr <- pca_fit(
 
 ### 32.1 Zeros require explicit treatment
 
-```r
+```{r, eval=FALSE}
 comp_zero <- comp
 comp_zero[1, 1] <- 0
 
@@ -327,7 +333,7 @@ try(
 
 If a pseudocount has a scientific justification:
 
-```r
+```{r, eval=FALSE}
 fit_comp_pc <- pca_fit(
   comp_zero,
   method = "compositional",
@@ -349,7 +355,7 @@ The pseudocount is part of the statistical model and must be reported.
 
 Construct smooth reflectance-like curves over wavelengths:
 
-```r
+```{r, eval=FALSE}
 set.seed(5002)
 n_curve <- 70
 wave <- seq(450, 900, length.out = 120)
@@ -375,7 +381,7 @@ rownames(curve_mat) <- paste0("plot_", seq_len(n_curve))
 
 Dense-grid FPCA:
 
-```r
+```{r, eval=FALSE}
 fit_fpca <- pca_fit(
   curve_mat,
   method = "functional",
@@ -389,7 +395,7 @@ fit_fpca
 
 Plot eigenfunctions:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit_fpca,
   type = "eigenfunctions"
@@ -398,7 +404,7 @@ pca_plot(
 
 Scores:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit_fpca,
   type = "scores",
@@ -418,7 +424,7 @@ Inspect where an eigenfunction is positive or negative over wavelength, but reme
 
 Generate a daily environmental-physiology series:
 
-```r
+```{r, eval=FALSE}
 set.seed(5003)
 ntime <- 240
 tt <- seq_len(ntime)
@@ -433,7 +439,7 @@ Xtime <- cbind(
 
 Dynamic PCA with lags 1, 2, and 3:
 
-```r
+```{r, eval=FALSE}
 fit_dyn <- pca_fit(
   Xtime,
   method = "dynamic",
@@ -449,7 +455,7 @@ fit_dyn
 
 Plot score trajectory:
 
-```r
+```{r, eval=FALSE}
 pca_plot(
   fit_dyn,
   type = "trajectory",
@@ -459,7 +465,7 @@ pca_plot(
 
 Inspect lagged loadings:
 
-```r
+```{r, eval=FALSE}
 pca_table(
   fit_dyn,
   type = "loadings"
@@ -478,7 +484,7 @@ Do not interpret lagged loadings as causal effects. They describe covariance str
 
 Suppose 30 plants are measured on four occasions for five physiological variables.
 
-```r
+```{r, eval=FALSE}
 set.seed(5004)
 subject <- factor(rep(paste0("plant_", 1:30), each = 4))
 time_ml <- rep(0:3, times = 30)
@@ -498,7 +504,7 @@ Xml <- cbind(
 
 Within-subject PCA:
 
-```r
+```{r, eval=FALSE}
 fit_within <- pca_fit(
   Xml,
   method = "multilevel",
@@ -512,7 +518,7 @@ fit_within <- pca_fit(
 
 Between-subject PCA:
 
-```r
+```{r, eval=FALSE}
 fit_between <- pca_fit(
   Xml,
   method = "multilevel",
@@ -526,7 +532,7 @@ fit_between <- pca_fit(
 
 Compare loadings:
 
-```r
+```{r, eval=FALSE}
 pca_table(fit_within, type = "loadings")
 pca_table(fit_between, type = "loadings")
 ```
@@ -546,7 +552,7 @@ Ordinary PCA on all rows mixes those two covariance sources.
 
 Consider:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "logistic")
 pca_fit(method = "glmpca")
 ```
@@ -559,7 +565,7 @@ Do not automatically transfer Gaussian eigenvalue rules to generalized PCA.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "compositional")
 ```
 
@@ -571,7 +577,7 @@ and report the log-ratio coordinate system and any zero replacement.
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "dynamic")
 ```
 
@@ -583,7 +589,7 @@ and report `lags`, `include_current`, scaling, and the interpretation of lagged 
 
 Use:
 
-```r
+```{r, eval=FALSE}
 pca_fit(method = "multilevel", level = "within")
 pca_fit(method = "multilevel", level = "between")
 ```

@@ -1,0 +1,342 @@
+# Incomplete and High-Dimensional Data: NIPALS, EM, PPCA, Bayesian, Shrinkage, and Randomized PCA
+
+## Incomplete and High-Dimensional Data: NIPALS, EM, PPCA, Bayesian, Shrinkage, and Randomized PCA
+
+**Package:** `pcaLab`\
+**Target version:** `0.1.0`\
+**Role in the vignette system:** PCA when the matrix is incomplete,
+probabilistic, or high-dimensional, including explicit limits of
+complete-case deletion and covariance estimation when `p` approaches or
+exceeds `n`.
+
+> This source is intentionally instructional. It is not precompiled
+> here. Code that requires an optional backend is guarded in the
+> examples or should be run only after
+> [`pca_capabilities()`](https://wep69.github.io/pcaLab/reference/pca_capabilities.md)
+> confirms availability.
+
+### Learning objectives
+
+The reader will learn to:
+
+1.  audit missingness before choosing a computational strategy;
+2.  compare NIPALS and EM-style PCA for incomplete matrices;
+3.  understand PPCA as a latent Gaussian model rather than merely
+    another SVD routine;
+4.  understand what Bayesian PCA adds and what it requires;
+5.  work safely when `p > n`;
+6.  use shrinkage covariance when sample covariance is unstable;
+7.  use randomized SVD for computational scale;
+8.  interpret Marchenko-Pastur screening as one source of rank evidence
+    rather than a universal cutoff.
+
+### Scope and relationship to the other vignettes
+
+This vignette is intentionally focused. It develops the topics below in
+depth and avoids reproducing material assigned to other blocks.
+
+**Developed here:** PCA when the matrix is incomplete, probabilistic, or
+high-dimensional, including explicit limits of complete-case deletion
+and covariance estimation when `p` approaches or exceeds `n`.
+
+**Not developed here:** Nonlinear manifolds and non-Gaussian response
+geometries are reserved for the next vignette.
+
+## Part VII. Missing data and probabilistic PCA
+
+### 25. Missing values: do not default automatically to complete cases
+
+Create a teaching matrix with approximately 8% missing cells:
+
+``` r
+
+set.seed(2001)
+Xmiss <- as.matrix(X)
+idx_miss <- sample.int(
+  length(Xmiss),
+  size = round(0.08 * length(Xmiss))
+)
+Xmiss[idx_miss] <- NA
+
+mean(is.na(Xmiss))
+```
+
+Run the diagnostic:
+
+``` r
+
+pca_doctor(
+  Xmiss,
+  scale = TRUE
+)$suggestions
+```
+
+#### 25.1 NIPALS
+
+``` r
+
+fit_nipals <- pca_fit(
+  Xmiss,
+  method = "nipals",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+
+fit_nipals
+```
+
+#### 25.2 EM-style PCA
+
+``` r
+
+fit_em <- pca_fit(
+  Xmiss,
+  method = "em",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+
+fit_em
+```
+
+#### 25.3 Probabilistic PCA
+
+``` r
+
+fit_ppca <- pca_fit(
+  Xmiss,
+  method = "ppca",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 3
+)
+
+fit_ppca
+```
+
+#### 25.4 Bayesian PCA
+
+``` r
+
+if (requireNamespace("pcaMethods", quietly = TRUE)) {
+  fit_bpca <- pca_fit(
+    Xmiss,
+    method = "bayesian",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 3
+  )
+
+  fit_bpca
+}
+```
+
+#### 25.5 Compare common outputs carefully
+
+``` r
+
+fits_missing <- list(
+  nipals = fit_nipals,
+  em = fit_em,
+  ppca = fit_ppca
+)
+
+if (exists("fit_bpca")) {
+  fits_missing$bayesian <- fit_bpca
+}
+
+pca_compare(
+  fits_missing,
+  ncomp = 3
+)$metrics
+```
+
+#### Interpretation
+
+Missing-data PCA methods do not magically remove assumptions about
+missingness. The analysis should document:
+
+- fraction and pattern of missing cells;
+- plausible missingness mechanism;
+- whether missingness depends on treatment or measurement magnitude;
+- sensitivity to the chosen missing-data PCA strategy;
+- whether downstream interpretation is stable.
+
+Deleting every row with one missing cell can be especially wasteful in
+wide datasets.
+
+------------------------------------------------------------------------
+
+### 26. Probabilistic PCA as a latent-variable model
+
+Probabilistic PCA can be written conceptually as
+
+``` math
+\mathbf x_i
+= \boldsymbol\mu
++ \mathbf W\mathbf z_i
++ \boldsymbol\varepsilon_i,
+```
+
+with
+
+``` math
+\mathbf z_i \sim N(0,\mathbf I),
+\qquad
+\boldsymbol\varepsilon_i \sim N(0,\sigma^2\mathbf I).
+```
+
+``` r
+
+fit_ppca_complete <- pca_fit(
+  X,
+  method = "ppca",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 2
+)
+
+fit_ppca_complete$engine
+fit_ppca_complete$extra
+```
+
+#### When PPCA is useful
+
+- latent-variable interpretation is desirable;
+- missing data are present;
+- model-based dimensionality criteria are useful;
+- a noise variance model is scientifically acceptable.
+
+#### When to be cautious
+
+The isotropic residual model is restrictive. Strong heteroscedasticity,
+heavy tails, structured dependence, or contamination can make the PPCA
+assumptions unrealistic.
+
+------------------------------------------------------------------------
+
+## Part VIII. High-dimensional PCA
+
+### 27. Hyperspectral example with `p >> n`
+
+Simulate 80 observations measured at 400 spectral variables:
+
+``` r
+
+spectral <- pca_simulate(
+  n = 80,
+  p = 400,
+  rank = 4,
+  eigenvalues = c(8, 5, 3, 1.5),
+  noise = 0.65,
+  seed = 3001
+)
+
+Xspec <- spectral$data
+dim(Xspec)
+```
+
+The maximum number of nonzero centered PCs is 79, not 400.
+
+#### 27.1 Randomized PCA
+
+``` r
+
+fit_rand <- pca_fit(
+  Xspec,
+  method = "randomized",
+  center = TRUE,
+  scale = TRUE,
+  ncomp = 8,
+  seed = 3001
+)
+
+fit_rand
+pca_plot(fit_rand, type = "scree")
+```
+
+If `irlba` is installed, `backend = "auto"` may use it. Otherwise an
+internal randomized SVD is available.
+
+#### 27.2 Shrinkage PCA
+
+``` r
+
+if (requireNamespace("corpcor", quietly = TRUE)) {
+  fit_shrink <- pca_fit(
+    Xspec,
+    method = "shrinkage",
+    center = TRUE,
+    scale = TRUE,
+    ncomp = 8
+  )
+
+  fit_shrink
+}
+```
+
+#### 27.3 Marchenko-Pastur screening
+
+For a centered UV-scaled classical reference:
+
+``` r
+
+fit_spec_classic <- pca_fit(
+  Xspec,
+  method = "classical",
+  center = TRUE,
+  scale = TRUE
+)
+
+sel_spec <- pca_ncomp(
+  fit_spec_classic,
+  methods = c("scree", "parallel", "rmt", "cv"),
+  nperm = 299,
+  seed = 3001
+)
+
+sel_spec$recommendations
+```
+
+#### Interpretation
+
+In high-dimensional data, sample covariance eigenvalues can be noisy
+even without biological signal. Do not interpret a long descending
+spectrum as evidence that every early PC is meaningful.
+
+Regularization, null-spectrum references, out-of-sample validation, and
+known-truth simulations become much more important.
+
+------------------------------------------------------------------------
+
+### Decision matrix: missingness and high dimensionality
+
+| Data problem | First method to consider | Why | Main caution |
+|----|----|----|----|
+| few scattered missing values, low-dimensional | NIPALS | estimates components without complete-case deletion | component-wise convergence can be slow |
+| missing values with approximate low-rank Gaussian structure | EM-style PCA | iterates reconstruction and refitting | uncertainty from missingness is not automatically represented |
+| Gaussian latent-variable interpretation | PPCA | explicit probabilistic model and likelihood | isotropic noise assumption may be restrictive |
+| missingness plus probabilistic uncertainty | Bayesian PCA | posterior treatment of latent structure | prior sensitivity and backend dependence |
+| `p >> n`, noisy covariance | shrinkage PCA | stabilizes covariance estimation | shrinkage target affects geometry |
+| very large matrix, only first few PCs needed | randomized PCA | computationally efficient truncated SVD | approximation error and seed should be documented |
+| high-dimensional spike detection | Marchenko-Pastur screening | compares spectrum with a random-matrix null bulk | assumptions are asymptotic and not a universal retention rule |
+
+The choice should be driven by the missing-data mechanism, data
+geometry, computational size, and inferential target, not by whichever
+optional backend happens to be installed.
+
+### Where to continue
+
+Continue to `06-nonlinear-generalized-special-geometries.Rmd` when
+ordinary Euclidean covariance is not the right geometry.
+
+### Reproducibility note
+
+The examples use package-generated or explicitly simulated teaching
+data. They demonstrate workflow and interpretation, not empirical
+evidence. For stochastic procedures, set and report a seed. For optional
+engines, record backend versions with
+[`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) and preserve
+the preprocessing specification used to create the fitted object.
